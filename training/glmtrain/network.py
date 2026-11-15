@@ -45,7 +45,10 @@ def start_dht(host, port, peers=(), identity=None):
 
 
 def key(manifest, suffix):
-    return f"gatorllm.{manifest['run_id']}.{suffix}"
+    # A bundle rendezvous can serve several isolated project/room optimizer groups.
+    # Keep its immutable contract and clock discoverable from each room namespace.
+    run_id = manifest.get("rendezvous_run_id", manifest["run_id"]) if suffix in ("contract", "clock") else manifest["run_id"]
+    return f"gatorllm.{run_id}.{suffix}"
 
 
 def workers(dht, manifest):

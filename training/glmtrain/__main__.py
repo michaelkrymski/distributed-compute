@@ -98,7 +98,7 @@ def main():
         if args.namespace:
             if not re.fullmatch(r"[-a-zA-Z0-9._]{1,200}", args.namespace):
                 raise ValueError("Use a simple namespace containing letters, digits, dots, hyphens or underscores")
-            manifest = {**manifest, "run_id": manifest["run_id"] + "." + args.namespace}
+            manifest = {**manifest, "rendezvous_run_id": manifest["run_id"], "run_id": manifest["run_id"] + "." + args.namespace}
         if args.command == "inspect":
             from .model import ModelConfig
 

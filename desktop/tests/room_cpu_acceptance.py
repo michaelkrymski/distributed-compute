@@ -83,6 +83,10 @@ def main():
                 log = (root / (str(i) + ".log")).read_text()
                 assert '"event": "epoch"' in log, log
             print("Real two-worker room training passed")
+        except BaseException:
+            for log_path in root.glob("*.log"):
+                print(f"--- {log_path.name} ---\n{log_path.read_text()}", flush=True)
+            raise
         finally:
             for p in processes:
                 if p.poll() is None:
