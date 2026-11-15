@@ -1,0 +1,13 @@
+{
+  "hivemind": {
+    "version": "1.1.12",
+    "license_url": "https://raw.githubusercontent.com/learning-at-home/hivemind/1.1.12/LICENSE",
+    "license_sha256": "9c31e76fb486b8c6d3d63e24bf86e6701d033749159c6d99facbc10fe783364f"
+  },
+  "slint": {
+    "version": "1.18.1b1",
+    "source_url": "https://files.pythonhosted.org/packages/77/54/56ddfda0474a426871495aa630a94551076fbb1b0719c2e723ba4b93a2dd/slint-1.18.1b1.tar.gz",
+    "source_sha256": "99cfa315923242cd13b1f54867ba1f7ca3e960a6b0f5b88f475482e2c52bd634",
+    "license_member": "slint-1.18.1b1/api/rs/build/LICENSES/LicenseRef-Slint-Royalty-free-2.0.md"
+  }
+}

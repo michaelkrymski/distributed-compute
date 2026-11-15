@@ -1,0 +1,4 @@
+{
+  "model": {"vocab_size":512,"width":32,"layers":2,"heads":2,"expansion":2,"context":16,"tied":true},
+  "training": {"seed":42,"learning_rate":0.001,"weight_decay":0.01,"target_batch_tokens":256,"target_tokens":512,"data_shards":2}
+}

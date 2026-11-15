@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glm-training"
+version = "0.1.0"
+description = "A small, shared Hivemind language-model training experiment"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "torch==2.8.0",
+  "hivemind==1.1.12",
+  "numpy==2.2.6",
+  "tokenizers==0.21.4",
+]
+
+[project.optional-dependencies]
+test = ["pytest==8.4.2"]
+
+[project.scripts]
+glmtrain = "glmtrain.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["glmtrain*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

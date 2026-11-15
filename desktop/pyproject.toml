@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glm-desktop"
+version = "0.1.0"
+description = "Cross-platform desktop client for distributed training and benchmarks"
+requires-python = ">=3.12"
+dependencies = ["slint==1.18.1b1", "keyring>=25,<26"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.4,<10"]
+
+[project.scripts]
+glm-desktop = "glm_desktop.app:main"
+
+[tool.setuptools.package-data]
+glm_desktop = ["ui/*.slint", "ui/*.svg", "ui/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+
+[tool.setuptools.packages.find]
+include = ["glm_desktop*"]

@@ -1,0 +1,7 @@
+declare namespace Cloudflare {
+  interface Env {
+    DB?: D1Database;
+    TEAM_KEYS_JSON?: string;
+    BUCKET?: R2Bucket;
+  }
+}

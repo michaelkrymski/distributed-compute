@@ -1,0 +1,26 @@
+name: Slint desktop client
+on:
+  push:
+    paths: ["desktop/**", ".github/workflows/slint-desktop.yml"]
+  pull_request:
+    paths: ["desktop/**", ".github/workflows/slint-desktop.yml"]
+permissions:
+  contents: read
+jobs:
+  client:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Linux window-system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libinput10 libxkbcommon0 libx11-xcb1 libxcb1 libgbm1 fonts-dejavu-core
+      - run: python -m pip install -e "./desktop[test]"
+      - run: python -m pytest desktop/tests -q
+      - run: glm-desktop --check-ui

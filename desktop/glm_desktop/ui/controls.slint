@@ -1,0 +1,120 @@
+export component Action inherits FocusScope {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> primary: false;
+    in property <bool> danger: false;
+    out property <bool> hovered: touch.has-hover;
+    callback clicked();
+    min-width: 100px; min-height: 44px; preferred-height: 44px;
+    accessible-role: button;
+    accessible-label: root.text;
+    opacity: root.enabled ? 1 : 0.4;
+    key-pressed(event) => {
+        if root.enabled && (event.text == "\n" || event.text == " ") { root.clicked(); return accept; }
+        return reject;
+    }
+    Rectangle {
+        border-radius: 12px;
+        border-width: root.has-focus ? 2px : 1px;
+        border-color: root.has-focus ? #c5d5ff : #ffffff0b;
+        background: root.danger ? (touch.has-hover ? #b54459 : #803346) : root.primary ? (touch.has-hover ? #7f96db : #637fc8) : (touch.has-hover ? #343f58 : #252e42);
+        animate background { duration: 160ms; }
+        HorizontalLayout { padding: 12px; spacing: 10px;
+            if root.icon.width > 0 : Image { source: root.icon; width: 20px; height: 20px; }
+            Text { text: root.text; color: #f2f5ff; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+        }
+    }
+    touch := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { root.focus(); root.clicked(); } }
+}
+
+export component NavIcon inherits FocusScope {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> selected: false;
+    out property <bool> hovered: touch.has-hover;
+    callback clicked();
+    width: 48px; height: 48px;
+    accessible-role: button; accessible-label: root.label;
+    Rectangle { border-radius: 24px; background: root.selected ? #3f517c : touch.has-hover ? #2b354e : #1c2435; animate background { duration: 180ms; }
+        Image { source: root.icon; width: 22px; height: 22px; x: 13px; y: 13px; }
+    }
+    key-pressed(event) => { if event.text == "\n" || event.text == " " { root.clicked(); return accept; } return reject; }
+    touch := TouchArea { mouse-cursor: pointer; clicked => { root.focus(); root.clicked(); } }
+}
+
+export component Choice inherits FocusScope {
+    in property <image> icon;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> selected: false;
+    callback clicked();
+    min-height: 98px; min-width: 130px;
+    accessible-role: button; accessible-label: root.title + " " + root.subtitle;
+    Rectangle { border-radius: 18px; border-width: 1px; border-color: root.selected || root.has-focus ? #a3baff : #ffffff10;
+        background: root.selected ? #2e405f : touch.has-hover ? #2c354d : #20293b; animate background { duration: 180ms; }
+        VerticalLayout { padding: 18px; spacing: 10px;
+            Image { source: root.icon; height: 28px; width: 34px; }
+            Text { text: root.title; color: #f4f7ff; font-size: 16px; font-weight: 600; }
+            Text { text: root.subtitle; color: #b2bed5; font-size: 12px; wrap: word-wrap; }
+        }
+    }
+    key-pressed(event) => { if event.text == "\n" || event.text == " " { root.clicked(); return accept; } return reject; }
+    touch := TouchArea { mouse-cursor: pointer; clicked => { root.focus(); root.clicked(); } }
+}
+
+export component Spinner inherits Rectangle {
+    in property <bool> spinning: true;
+    background: transparent;
+    width: 28px; height: 28px;
+    property <float> angle: 0;
+    Timer { interval: 25ms; running: root.spinning; triggered => { root.angle = mod(root.angle + 12, 360); } }
+    Image { source: @image-url("spinner.svg"); transform-rotation: root.angle * 1deg; width: 28px; height: 28px; }
+}
+
+export component AccountSwitch inherits FocusScope {
+    in-out property <int> selected: 0;
+    min-height: 54px; preferred-height: 54px;
+    accessible-role: slider;
+    accessible-label: "Sign-in type: " + (root.selected == 0 ? "Contributor" : "Administrator");
+    property <length> travel: (root.width - 8px) / 2;
+    property <length> drag-start: 0px;
+    property <length> thumb-x: touch.pressed ? clamp(root.drag-start + touch.mouse-x - touch.pressed-x, 0px, root.travel) : root.selected * root.travel;
+    animate thumb-x { duration: touch.pressed ? 0ms : 200ms; easing: ease-in-out; }
+    Rectangle { background: #101622; border-radius: 18px; border-width: 1px; border-color: root.has-focus ? #9fb5e8 : #ffffff09;
+        Rectangle { x: 4px + root.thumb-x; y: 4px; width: root.travel; height: parent.height - 8px; border-radius: 14px; background: #2b3851; }
+        HorizontalLayout { spacing: 0px;
+            Text { text: "Contributor"; color: root.selected == 0 ? #eff4ff : #8e9cb5; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: "Administrator"; color: root.selected == 1 ? #eff4ff : #8e9cb5; horizontal-alignment: center; vertical-alignment: center; }
+        }
+    }
+    key-pressed(event) => {
+        if event.text == " " || event.text == "\n" { root.selected = 1 - root.selected; return accept; }
+        return reject;
+    }
+    touch := TouchArea {
+        enabled: root.enabled; mouse-cursor: pointer;
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down { root.focus(); root.drag-start = root.selected * root.travel; }
+            if event.kind == PointerEventKind.up { root.selected = touch.mouse-x < root.width / 2 ? 0 : 1; }
+        }
+    }
+}
+
+export component ServerBubble inherits FocusScope {
+    in property <string> name;
+    in property <string> description;
+    callback clicked();
+    width: 184px; min-height: 162px; preferred-height: 162px;
+    accessible-role: button; accessible-label: root.name + ". " + root.description;
+    property <length> lift: touch.has-hover || root.has-focus ? -5px : 0px;
+    animate lift { duration: 180ms; easing: ease-in-out; }
+    Rectangle { x: 46px; y: 8px + root.lift; width: 92px; height: 92px; border-radius: 46px;
+        background: touch.has-hover ? #344461 : #243149;
+        border-width: 1px; border-color: #ffffff12;
+        drop-shadow-blur: 16px; drop-shadow-offset-y: 7px; drop-shadow-color: #00000035;
+        Image { source: @image-url("network.svg"); width: 38px; height: 38px; x: 27px; y: 27px; }
+    }
+    Text { x: 0px; y: 116px + root.lift; width: root.width; text: root.name; color: #e8effe; font-weight: 600; font-size: 15px; wrap: word-wrap; horizontal-alignment: center; }
+    key-pressed(event) => { if event.text == " " || event.text == "\n" { root.clicked(); return accept; } return reject; }
+    touch := TouchArea { mouse-cursor: pointer; clicked => { root.focus(); root.clicked(); } }
+}

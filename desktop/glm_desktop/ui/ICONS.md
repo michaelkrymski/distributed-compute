@@ -1,0 +1,1 @@
+Navigation/chip icons are project-authored SVGs. NVIDIA and AMD brand glyphs come from Simple Icons (CC0): https://github.com/simple-icons/simple-icons . Brand trademarks belong to their owners; use does not imply endorsement.

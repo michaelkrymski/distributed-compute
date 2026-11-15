@@ -1,0 +1,2 @@
+/api/* https://backend.example.invalid/api/:splat 200!
+/* /index.html 200

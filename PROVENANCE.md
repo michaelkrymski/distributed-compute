@@ -1,0 +1,13 @@
+# Source provenance
+
+This private repository is a source-only extraction of the training/distributed compute platform from `GatorLLM/glm-0-team-2`, branch `codex/contributor-app`, commit `624d3edd3d3af49fb96c89771323c6ca4d8debee` (2026-11-15 snapshot). The original repository and deployed services were not transferred or deleted.
+
+Only tracked files were exported. Runtime databases, team keys, passwords, datasets, checkpoints, logs, results, and the hosted project's identity were not copied. New Git history avoids carrying unreviewed historical material into another repository. Original commit authors are retained by name in [ORIGINAL_AUTHORS.txt](ORIGINAL_AUTHORS.txt); their email addresses are omitted.
+
+The extraction retains the desktop client, coordination/benchmark tools, reference model and trainer, dashboard/backend, setup scripts and CI. The model is an included reference workload; the platform can be developed independently.
+
+Original authors retain their rights. No project-wide license was present in the source checkout. This extraction does not assign their rights or grant a new open-source license. Keep it private until the relevant rights holders approve a project license and intended public redistribution. Dependency licenses do not license the group's original code. Private access is not a substitute for permission to redistribute others' work.
+
+## Migration changes
+
+Product/repository links and installer branding are now Distributed Compute. Python modules (`glmbench`, `glmtrain`, `glm_desktop`), installed package IDs, credential storage and DHT protocol namespaces remain compatible. Existing installations are not modified. Production project identity was removed; the new copy does not deploy or connect automatically to the old backend. See [MIGRATION.md](MIGRATION.md).

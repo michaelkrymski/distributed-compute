@@ -1,0 +1,383 @@
+import { LineEdit, ComboBox, CheckBox, ScrollView, TextEdit, ProgressIndicator, AboutSlint } from "std-widgets.slint";
+import { Action, NavIcon, Choice, Spinner, AccountSwitch, ServerBubble } from "controls.slint";
+export struct PublicServer { name: string, description: string, origin: string }
+export struct Contribution { device: string, share: float }
+export struct Computer { name: string, device: string, status: string, ready: bool }
+component Caption inherits Text { color: #aab5cb; font-size: 14px; wrap: word-wrap; }
+component Heading inherits Text { color: #f4f6ff; font-size: 26px; font-weight: 700; }
+component Card inherits Rectangle { background: #1c2231; border-radius: 22px; }
+component Chevron inherits Rectangle {
+ in property <bool> back: false; in property <bool> available: true; callback activated();
+ width: 52px; height: 52px; border-radius: 26px; background: touch.has-hover ? #c6d3ff : #ffffff; opacity: available ? 1 : 0.3;
+ animate background { duration: 180ms; }
+ Image { width: 24px; height: 24px; x: 14px; y: 14px; source: back ? @image-url("left.svg") : @image-url("right.svg"); }
+ touch := TouchArea { enabled: available; clicked => { root.activated(); } }
+}
+export component MainWindow inherits Window {
+ title: "Distributed Compute"; preferred-width: 1200px; preferred-height: 850px; min-width: 1000px; min-height: 740px;
+ background: #11151e; default-font-size: 15px;
+    in property <float> setup-progress: 0;
+    in property <string> setup-progress-label: "Waiting for installation";
+    in-out property <bool> setup-complete: false;
+    in-out property <int> page: 0;
+    in-out property <string> api-url: "";
+    in-out property <string> access-key;
+    in-out property <string> python-path: "python3";
+    in-out property <bool> use-wsl: false;
+    in-out property <string> distro: "Ubuntu";
+    in-out property <string> host;
+    in-out property <int> device-index: 0;
+    in-out property <string> bundle;
+    in-out property <string> peer;
+    in-out property <string> worker-name: "my-computer";
+    in-out property <string> shard: "0";
+    in-out property <string> output: "output/desktop";
+    in-out property <bool> resume: false;
+    in property <bool> connected: false;
+    in property <bool> busy: false;
+    in property <bool> checked: false;
+    in property <bool> agent-running: false;
+    in property <bool> training-running: false;
+    in property <bool> coordinator-running: false;
+    in property <bool> local-ready: false;
+    in property <bool> can-ready: false;
+    in property <bool> can-join: false;
+    in property <bool> admin: false;
+    in property <bool> can-start: false;
+    in property <bool> has-session: false;
+    in property <bool> stale: false;
+    in property <string> user-label: "Not connected";
+    in property <string> notice: "Welcome. Connect your team and check this computer to get started.";
+    in property <bool> notice-error: false;
+    in property <string> device-label: "Computer not checked yet";
+    in property <string> runtime-label: "Use the Python environment where your training tools are installed.";
+    in property <string> phase: "no session";
+    in property <string> phase-title: "Ready for a shared experiment.";
+    in property <string> countdown: "—";
+    in property <string> team-summary: "No computers connected";
+    in property <string> workload: "Waiting for an organizer to open a session";
+    in property <float> bench-progress: 0;
+    in property <string> result-text: "Results appear after measurement";
+    in property <[Computer]> computers;
+    in property <string> training-status: "No local training worker running";
+    in property <string> training-summary: "Join your organizer's prepared run bundle.";
+    in property <float> training-progress: 0;
+    in property <string> loss: "—";
+    in property <string> bundle-summary: "Use the same complete run bundle as your teammates.";
+    in property <string> logs: "Activity from this computer appears here.\n";
+    callback connect-team(); callback disconnect-team(); callback check-computer();
+    callback join-benchmark(); callback stop-benchmark(); callback toggle-ready();
+    callback open-dashboard(); callback refresh(); callback save-preferences();
+    callback start-coordinator(); callback stop-coordinator(); callback start-benchmark();
+    callback inspect-bundle(); callback join-training(); callback stop-training();
+    callback poll-ui();
+    callback find-python(); callback setup-guide();
+    Timer { interval: 200ms; running: true; triggered => { root.poll-ui(); } }
+
+
+ in-out property <int> setup-step: 0;
+ in-out property <int> session-mode: 0;
+ in-out property <string> admin-password;
+ in-out property <string> room-name: "Team training";
+ in-out property <string> goal-tokens: "500000000";
+ in property <bool> forecast-ready: false;
+ property <float> forecast-opacity: root.forecast-ready ? 1 : 0.5;
+ animate forecast-opacity { duration: 600ms; easing: ease-in-out; }
+ in property <string> estimate: "Finish a benchmark to predict training time.";
+ in property <[Contribution]> leaderboard;
+ callback remember-key(); callback forget-key(); callback admin-login(); callback install-tools();
+ callback create-training-room(); callback join-room(); callback start-training-room(); callback cancel-training-room(); callback stop-training-discovery();
+
+ in-out property <int> login-choice: 0;
+ in-out property <int> return-page: 0;
+ in property <bool> login-busy: false;
+ in property <bool> login-retry-blocked: false;
+ in property <string> login-error;
+ in property <bool> login-error-visible: false;
+ property <float> error-opacity: root.login-error-visible ? 1 : 0;
+ animate error-opacity { duration: 400ms; }
+ in property <string> busy-label;
+ in property <string> environment-status: "Not checked";
+ in property <string> driver-status: "Not checked";
+ in property <string> network-status: "Not checked";
+ in property <bool> joined: false;
+ in property <string> lobby-label: "Team session";
+ in property <string> lobby-server;
+ callback resume-setup(); callback finish-setup(); callback check-driver(); callback check-network();
+ property <string> nav-tip: session-nav.hovered ? "Team session" : admin-nav.hovered && root.admin ? "Administration" : settings-nav.hovered ? "Settings" : debug-nav.hovered ? "Debug" : setup-nav.hovered ? "Resume setup" : "";
+ property <length> tip-y: settings-nav.hovered ? root.height - 124px : debug-nav.hovered ? root.height - 62px : session-nav.hovered ? 96px : admin-nav.hovered ? 156px : 216px;
+
+ in-out property <bool> server-selected: false;
+ in-out property <string> selected-server-name: "Your team";
+ in-out property <string> selected-server-origin;
+ in-out property <string> private-server-input;
+ in-out property <bool> adding-private: false;
+ in property <[PublicServer]> public-servers;
+ in property <string> directory-status;
+ callback choose-server(string, string); callback browse-servers(); callback refresh-directory();
+ callback open-admin-setup();
+ property <int> field-tick: 12;
+ changed login-choice => { root.field-tick = 0; }
+ changed server-selected => { if root.server-selected { root.field-tick = 0; } }
+ Timer { interval: 30ms; running: root.field-tick < 12; triggered => { root.field-tick += 1; } }
+ HorizontalLayout { width: root.width; height: root.height; spacing: 0px;
+  Rectangle { width: 82px; background: #161d2b;
+   VerticalLayout { padding: 16px; spacing: 12px;
+    Text { text: "G"; color: #eff4ff; font-size: 30px; font-weight: 800; horizontal-alignment: center; }
+    Rectangle { height: 12px; background: transparent; }
+    session-nav := NavIcon { icon: @image-url("session.svg"); label: "Team session"; selected: root.page == 1; clicked => { root.page = 1; } }
+    admin-nav := NavIcon { visible: root.admin; icon: @image-url("admin.svg"); label: "Administration"; selected: root.page == 2; clicked => { root.page = 2; } }
+    setup-nav := NavIcon { visible: !root.setup-complete; icon: @image-url("setup.svg"); label: "Resume setup"; selected: root.page == 0; clicked => { root.resume-setup(); } }
+    Rectangle { vertical-stretch: 1; background: transparent; }
+    Action { text: "About"; clicked => { root.page = 6; } }
+    settings-nav := NavIcon { icon: @image-url("settings.svg"); label: "Settings"; selected: root.page == 4; clicked => { root.return-page = root.page; root.page = 4; } }
+    debug-nav := NavIcon { icon: @image-url("debug.svg"); label: "Debug"; selected: root.page == 3; clicked => { if root.page != 3 { root.return-page = root.page; } root.page = 3; } }
+   }
+  }
+  VerticalLayout { horizontal-stretch: 1; padding-left: 28px; padding-right: 28px; padding-top: 100px; padding-bottom: 28px; spacing: 18px;
+   if !root.setup-complete && root.page != 0 : Action { text: "Resume setup · step " + (root.setup-step + 1) + " of 4"; icon: @image-url("setup.svg"); clicked => { root.resume-setup(); } }
+   if root.page == 0 && root.setup-step == 0 : Rectangle { background: transparent; vertical-stretch: 1; horizontal-stretch: 1;
+    Rectangle {
+     width: min(parent.width - 24px, root.server-selected ? 760px : 920px);
+     height: min(parent.height - 24px, root.server-selected ? 570px : root.adding-private ? 640px : 580px);
+     x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+     background: #171e2a; border-radius: 26px; border-width: 1px; border-color: #ffffff07;
+     drop-shadow-blur: 30px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000030;
+     if !root.server-selected : VerticalLayout { padding: 28px; spacing: 12px;
+      Caption { text: "DISTRIBUTED COMPUTE"; font-size: 11px; }
+      Heading { text: "Find your team."; font-size: 30px; }
+      Caption { text: "Choose a public server, or connect directly to a private one."; }
+      ScrollView { min-height: 140px; vertical-stretch: 1;
+       HorizontalLayout { padding: 10px; spacing: 20px;
+        Rectangle { horizontal-stretch: 1; background: transparent; }
+        for server in root.public-servers : ServerBubble { name: server.name; description: server.description; clicked => { root.choose-server(server.origin, server.name); } }
+        Rectangle { horizontal-stretch: 1; background: transparent; }
+       }
+      }
+      Caption { text: root.directory-status; }
+      if root.adding-private : HorizontalLayout { spacing: 12px;
+       LineEdit { text <=> root.private-server-input; placeholder-text: "https://your-private-server.example"; horizontal-stretch: 1; }
+       Action { text: "Connect privately"; primary: true; clicked => { root.choose-server(root.private-server-input, "Private server"); } }
+      }
+      HorizontalLayout { spacing: 12px;
+       Action { text: root.adding-private ? "Cancel" : "+ Add a private server"; clicked => { root.adding-private = !root.adding-private; } }
+       Action { text: "Refresh public servers"; clicked => { root.refresh-directory(); } }
+      }
+      Caption { text: "Private addresses stay on this computer. Selecting a server does not send your key or password."; font-size: 12px; }
+     }
+     if root.server-selected : VerticalLayout { padding: 28px; spacing: 12px;
+      HorizontalLayout { Caption { text: root.selected-server-name; color: #c4d0e6; horizontal-stretch: 1; } Action { text: "Change server"; enabled: !root.login-busy; clicked => { root.browse-servers(); } } }
+      Heading { text: "Welcome to your team."; font-size: 28px; }
+      AccountSwitch { selected <=> root.login-choice; enabled: !root.login-busy; }
+      Caption { text: root.login-choice == 0 ? "Contribute your computer with your team access key." : "Sign in with your administrator account."; opacity: clamp(root.field-tick / 3, 0, 1); animate opacity { duration: 100ms; } }
+      Rectangle { height: 52px; background: transparent; opacity: clamp((root.field-tick - 2) / 3, 0, 1); animate opacity { duration: 100ms; }
+       if root.login-choice == 0 : LineEdit { width: parent.width; height: 48px; text <=> root.access-key; input-type: password; placeholder-text: "Team access key"; enabled: !root.login-busy; }
+       if root.login-choice == 1 : LineEdit { width: parent.width; height: 48px; text <=> root.admin-password; input-type: password; placeholder-text: "Administrator password"; enabled: !root.login-busy; }
+      }
+      Action { text: root.login-busy ? "Signing in…" : root.connected && (root.login-choice == 0 || root.admin) ? "Continue setup" : "Sign in"; primary: true;
+       opacity: clamp((root.field-tick - 4) / 3, 0, 1); animate opacity { duration: 100ms; }
+       enabled: !root.login-busy && !root.login-retry-blocked && root.field-tick >= 5;
+       clicked => { if root.connected && (root.login-choice == 0 || root.admin) && root.access-key == "" && root.admin-password == "" { root.setup-step = 1; } else if root.login-choice == 0 { root.remember-key(); } else { root.admin-login(); } }
+      }
+      if root.login-choice == 1 : HorizontalLayout {
+       Rectangle { horizontal-stretch: 1; background: transparent; }
+       Action { text: "Create admin password from key ↗"; enabled: !root.login-busy; clicked => { root.open-admin-setup(); } }
+       Rectangle { horizontal-stretch: 1; background: transparent; }
+      }
+      Caption { text: "Connected to " + root.selected-server-origin; font-size: 12px; opacity: clamp((root.field-tick - 6) / 3, 0, 1); animate opacity { duration: 100ms; } }
+      Caption { text: "Saved securely on this computer. Passwords are never stored."; font-size: 12px; }
+      Rectangle { vertical-stretch: 1; background: transparent; }
+     }
+    }
+   }
+   if root.page == 0 && root.setup-step > 0 : Card { VerticalLayout { padding: 34px; spacing: 20px;
+    Caption { text: "YOUR COMPUTER / STEP " + (root.setup-step + 1) + " OF 4"; }
+    Heading { text: root.setup-step == 0 ? "Welcome to your team." : root.setup-step == 1 ? "Find your training environment." : root.setup-step == 2 ? "Check your GPU and connection." : "Ready to contribute."; }
+    if root.setup-step == 1 : ScrollView { vertical-stretch: 1; VerticalLayout { spacing: 14px;
+     Card { background: #222c40; VerticalLayout { padding: 16px; spacing: 10px;
+      HorizontalLayout { Image { source: @image-url("windows.svg"); width: 24px; height: 24px; } Heading { text: root.use-wsl ? "1 · WSL & Python" : "1 · Python environment"; font-size: 17px; } Caption { text: root.environment-status; } }
+      CheckBox { text: "Use Ubuntu in WSL (Windows)"; checked <=> root.use-wsl; enabled: !root.busy; }
+      if root.use-wsl : LineEdit { text <=> root.distro; placeholder-text: "Ubuntu distribution"; enabled: !root.busy; }
+      LineEdit { text <=> root.python-path; placeholder-text: "Training Python executable"; enabled: !root.busy; }
+      HorizontalLayout {
+       Action { text: "Find Python"; enabled: !root.busy; clicked => { root.find-python(); } }
+       Action { text: "Install packages"; enabled: !root.busy; clicked => { root.install-tools(); } }
+      }
+      ProgressIndicator { progress: root.setup-progress; }
+      Caption { text: root.setup-progress-label; }
+     } }
+     Card { background: #222c40; VerticalLayout { padding: 16px; spacing: 10px;
+      HorizontalLayout { Image { source: @image-url("cpu.svg"); width: 24px; height: 24px; } Heading { text: "2 · GPU drivers"; font-size: 17px; } Caption { text: root.driver-status; } }
+      Action { text: "Check driver"; enabled: !root.busy; clicked => { root.check-driver(); } }
+     } }
+     Card { background: #222c40; VerticalLayout { padding: 16px; spacing: 10px;
+      HorizontalLayout { Image { source: @image-url("network.svg"); width: 24px; height: 24px; } Heading { text: "3 · Tailscale"; font-size: 17px; } Caption { text: root.network-status; } }
+      Action { text: "Check Tailscale"; enabled: !root.busy; clicked => { root.check-network(); } }
+     } }
+     Action { text: "Automated setup · one-shot install guide"; icon: @image-url("setup.svg"); primary: true; clicked => { root.setup-guide(); } }
+     Caption { text: "The automated option pauses for sign-in, approvals and restarts. Debug shows package installation output. You can leave this page and resume setup at any time."; }
+    } }
+    if root.setup-step == 2 : VerticalLayout { spacing: 18px;
+     Caption { text: "Choose the hardware this computer will contribute."; }
+     HorizontalLayout { spacing: 12px;
+      Choice { icon: @image-url("session.svg"); title: "Automatic"; subtitle: "Find my GPU"; selected: root.device-index == 0; clicked => { if !root.busy { root.device-index = 0; } } }
+      Choice { icon: @image-url("nvidia.svg"); title: "NVIDIA"; subtitle: "CUDA"; selected: root.device-index == 1; clicked => { if !root.busy { root.device-index = 1; } } }
+      Choice { icon: @image-url("amd.svg"); title: "AMD"; subtitle: "ROCm"; selected: root.device-index == 2; clicked => { if !root.busy { root.device-index = 2; } } }
+      Choice { icon: @image-url("cpu.svg"); title: "CPU"; subtitle: "Processor only"; selected: root.device-index == 3; clicked => { if !root.busy { root.device-index = 3; } } }
+     }
+     Action { text: root.busy ? "Checking your computer…" : "Check GPU & Tailscale"; primary: true; enabled: !root.busy; clicked => { root.check-computer(); } }
+     Caption { text: root.device-label; }
+     if root.checked : Card { VerticalLayout { padding: 18px; spacing: 14px;
+      Caption { text: "Your computer is verified. This address was automatically found in Tailscale."; color: #9ae3ba; }
+      LineEdit { text <=> root.host; placeholder-text: "Tailscale IP"; }
+      Caption { text: root.runtime-label; }
+     } }
+    }
+    if root.setup-step == 3 : VerticalLayout { spacing: 16px;
+     LineEdit { text <=> root.worker-name; placeholder-text: "Computer nickname"; }
+     LineEdit { text <=> root.output; placeholder-text: "Results / checkpoint folder"; }
+     Caption { text: "Join a room, ready up, and keep the app open while contributing. Organizer controls live in Administration."; }
+    }
+    Rectangle { vertical-stretch: root.setup-step == 1 ? 0 : 1; background: transparent; }
+    HorizontalLayout {
+     Chevron { back: true; available: root.setup-step > 0; activated => { root.setup-step -= 1; } }
+     Rectangle { horizontal-stretch: 1; background: transparent; }
+     if root.setup-step < 3 : Chevron { available: root.setup-step == 0 ? root.connected : root.setup-step == 2 ? root.checked : !root.busy; activated => { root.setup-step += 1; } }
+     if root.setup-step == 3 : Action { text: "Finish setup"; icon: @image-url("setup.svg"); primary: true; enabled: root.connected && root.checked && !root.busy; clicked => { root.finish-setup(); } }
+    }
+   } }
+   if root.page == 1 && !root.joined : Card { VerticalLayout { padding: 40px; spacing: 20px;
+    Image { source: @image-url("session.svg"); width: 52px; height: 52px; }
+    Caption { text: "SESSION LOBBY"; }
+    Heading { text: root.lobby-label; }
+    Caption { text: root.lobby-server; }
+    Caption { text: root.session-mode == 0 ? "Benchmark · measure shared compute on generated tokens" : "Model training · contribute to the team's prepared training run"; }
+    Caption { text: root.team-summary; }
+    Action { text: root.checked ? "Join team session" : "Complete computer setup first"; primary: true; enabled: root.connected && !root.busy; clicked => { if !root.checked { root.page = 0; root.setup-step = 2; } else if root.session-mode == 0 { root.join-benchmark(); } else { root.join-room(); } } }
+    Caption { text: "Joining connects this computer. Compute starts only after you ready up and the organizer starts the room."; }
+    Rectangle { vertical-stretch: 1; background: transparent; }
+   } }
+   if root.page == 1 && root.joined : HorizontalLayout { spacing: 18px;
+    VerticalLayout { spacing: 18px;
+     Caption { text: root.session-mode == 0 ? "BENCHMARK / GENERATED TOKENS" : "MODEL TRAINING / REAL CORPUS"; color: #a7bcff; }
+     Heading { text: root.phase-title; } Caption { text: root.workload; }
+     Card { VerticalLayout { padding: 26px; spacing: 20px;
+      Text { text: root.session-mode == 0 ? root.countdown : root.training-status; color: white; font-size: 32px; wrap: word-wrap; }
+      ProgressIndicator { progress: root.session-mode == 0 ? root.bench-progress : root.training-progress; }
+      Caption { text: root.session-mode == 0 ? root.result-text : root.training-summary; }
+      HorizontalLayout { spacing: 12px;
+       Rectangle { height: 80px; horizontal-stretch: 1; border-radius: 20px; background: root.local-ready || !root.can-ready ? #224e40 : ready-touch.has-hover ? #5269a6 : #35477a; animate background { duration: 200ms; }
+        Text { text: root.local-ready ? "Ready · waiting for the team" : !root.can-ready ? "Connected · " + root.phase : "Ready to contribute"; color: #e2ffed; font-size: 20px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+        ready-touch := TouchArea { enabled: root.can-ready && !root.busy; mouse-cursor: pointer; clicked => { root.toggle-ready(); } }
+       }
+       Action { text: "Stop"; icon: @image-url("stop.svg"); danger: true; height: 80px; clicked => { if root.agent-running { root.stop-benchmark(); } else { root.stop-training(); } } }
+      }
+     } }
+     Card { VerticalLayout { padding: 22px; spacing: 12px;
+      Heading { opacity: root.forecast-opacity; text: "Training forecast"; font-size: 20px; } Caption { text: root.estimate; }
+      ProgressIndicator { progress: root.bench-progress; }
+     } }
+    }
+    Card { width: 300px; VerticalLayout { padding: 20px; spacing: 16px;
+     Heading { text: "The team"; font-size: 22px; } Caption { text: root.team-summary; }
+     ScrollView { VerticalLayout { spacing: 12px;
+      for computer in root.computers : Rectangle { min-height: 88px; border-radius: 14px; background: computer.ready ? #233e35 : #282f40; animate background { duration: 250ms; }
+       VerticalLayout { padding: 12px; spacing: 5px;
+        Text { text: computer.name; color: white; font-weight: 600; }
+        Caption { text: computer.device; font-size: 12px; } Caption { text: computer.status; }
+       }
+      }
+     } }
+     Heading { text: "GPU contribution"; font-size: 19px; }
+     for entry in root.leaderboard : VerticalLayout { spacing: 6px;
+      Caption { text: entry.device + " · " + round(entry.share * 100) + "%"; }
+      Rectangle { height: 6px; border-radius: 3px; background: #30394f;
+       Rectangle { height: parent.height; width: parent.width * entry.share; border-radius: 3px; background: #9eb6ff; animate width { duration: 450ms; easing: ease-in-out; } }
+      }
+     }
+     Caption { text: "Measured work share, available after reports arrive."; font-size: 12px; }
+    } }
+   }
+   if root.page == 2 : ScrollView { VerticalLayout { spacing: 16px;
+    Heading { text: "Administration"; }
+    Caption { text: "Authorized organizers create rooms and start ready computers. Join separately to contribute your GPU."; }
+    ComboBox { model: ["Benchmark", "Model training"]; current-index <=> root.session-mode; }
+    Action { text: "Open benchmark lobby"; enabled: root.admin && root.checked && !root.coordinator-running && !root.has-session; clicked => { root.start-coordinator(); } }
+    Action { text: "Start ready benchmark"; enabled: root.can-start; clicked => { root.start-benchmark(); } }
+    Action { text: "Stop discovery node"; enabled: root.coordinator-running; clicked => { root.stop-coordinator(); } }
+    Heading { text: "Prepared training run"; font-size: 20px; }
+    LineEdit { text <=> root.room-name; placeholder-text: "Room name"; }
+    LineEdit { text <=> root.bundle; placeholder-text: "Local immutable run bundle folder"; }
+    Action { text: "Verify bundle"; enabled: root.checked; clicked => { root.inspect-bundle(); } }
+    Caption { text: root.bundle-summary; }
+    LineEdit { text <=> root.peer; placeholder-text: "Organizer rendezvous peer /ip4/..."; }
+    LineEdit { text <=> root.goal-tokens; placeholder-text: "Goal training tokens"; }
+    Action { text: "Create training room"; enabled: root.admin && root.checked; clicked => { root.create-training-room(); } }
+    Action { text: "Start ready training room"; enabled: root.admin; clicked => { root.start-training-room(); } }
+    Action { text: "Stop training discovery on this computer"; clicked => { root.stop-training-discovery(); } }
+    Action { text: "Cancel training room"; enabled: root.admin; clicked => { root.cancel-training-room(); } }
+    Action { text: "Project hosting & key setup guide"; clicked => { root.page = 5; } }
+   } }
+   if root.page == 3 : VerticalLayout { spacing: 14px;
+    HorizontalLayout { Heading { text: "Debug"; } Action { text: root.setup-complete ? "Back" : "Resume setup"; icon: @image-url("left.svg"); clicked => { root.page = root.setup-complete ? root.return-page : 0; } } } Caption { text: "Live installation, connection and worker output from this computer."; }
+    TextEdit { text: root.logs; read-only: true; vertical-stretch: 1; }
+   }
+   if root.page == 5 : ScrollView { VerticalLayout { spacing: 18px;
+    Heading { text: "Build a team project"; }
+    Caption { text: "1. Create a GitHub fork, a Netlify account and a Cloudflare backend hosting account. Provider sign-in and billing belong to you."; }
+    Caption { text: "2. In team-dashboard, run node scripts/manage-team.mjs. Add each member once; their key can serve many computers. Select coordinator only for administrators. Rerun to add, revoke or rotate keys."; }
+    Caption { text: "3. Provision a new backend with D1 binding DB. Set secret TEAM_KEYS_JSON from your private hash file. Use a new hosting project ID, not Michael's deployment."; }
+    Caption { text: "4. Configure your own allowed browser origins and Netlify API proxy. Build and publish the backend with all database migrations, then publish frontend-dist on Netlify."; }
+    Caption { text: "5. Share only the frontend URL and each member's key privately. Never upload work/, .dev.vars, checkpoints or datasets. Full commands are in desktop/PROJECT-SETUP.md."; }
+
+    Action { text: "Back to settings"; clicked => { root.page = 4; } }
+   } }
+   if root.page == 6 : VerticalLayout { spacing: 20px;
+    Heading { text: "About Distributed Compute"; }
+    Caption { text: "Team training and distributed benchmarks. Third-party notices are included with the application."; }
+    AboutSlint {}
+    Rectangle { vertical-stretch: 1; background: transparent; }
+   }
+   if root.page == 4 : ScrollView { VerticalLayout { spacing: 18px;
+    Heading { text: "Settings"; }
+    Card { VerticalLayout { padding: 22px; spacing: 14px;
+     Heading { text: "Account & team"; font-size: 19px; }
+     Caption { text: root.user-label; }
+     LineEdit { text <=> root.api-url; placeholder-text: "Team server URL"; enabled: !root.joined; }
+     LineEdit { text <=> root.access-key; input-type: password; placeholder-text: "Replacement team key"; }
+     HorizontalLayout { Action { text: "Save key"; enabled: !root.joined && !root.busy; clicked => { root.remember-key(); } } Action { text: "Forget credential"; enabled: !root.joined && !root.busy; clicked => { root.forget-key(); } } }
+     if root.admin : LineEdit { text <=> root.admin-password; input-type: password; placeholder-text: "Administrator password"; }
+     if root.admin : Action { text: "Sign in again"; enabled: !root.login-busy && !root.login-retry-blocked; clicked => { root.admin-login(); } }
+    } }
+    Card { VerticalLayout { padding: 22px; spacing: 14px;
+     Heading { text: "This computer"; font-size: 19px; }
+     LineEdit { text <=> root.worker-name; placeholder-text: "Computer nickname"; }
+     Action { text: "Computer setup"; icon: @image-url("cpu.svg"); clicked => { root.page = 0; root.setup-step = 1; } }
+    } }
+    Card { VerticalLayout { padding: 22px; spacing: 14px;
+     Heading { text: "Training & storage"; font-size: 19px; }
+     LineEdit { text <=> root.bundle; placeholder-text: "Local run bundle folder"; enabled: !root.joined; }
+     LineEdit { text <=> root.output; placeholder-text: "Results / checkpoints directory"; enabled: !root.joined; }
+     CheckBox { text: "Resume my checkpoint"; checked <=> root.resume; enabled: !root.joined; }
+    } }
+    Action { text: "Save settings"; primary: true; clicked => { root.save-preferences(); } }
+    Action { text: "Set up a new team project"; icon: @image-url("admin.svg"); clicked => { root.page = 5; } }
+   } }
+  }
+ }
+ if root.notice != "" || root.busy || root.login-busy : Rectangle {
+  width: min(root.width - 150px, 760px); height: 54px;
+  x: 82px + (root.width - 82px - self.width) / 2; y: 22px;
+  border-radius: 18px; background: root.notice-error && !root.busy ? #2b2029 : #1a2230;
+  border-width: 1px; border-color: #ffffff06;
+  drop-shadow-blur: 18px; drop-shadow-offset-y: 5px; drop-shadow-color: #00000035;
+  HorizontalLayout { padding: 12px; spacing: 12px;
+   if root.busy || root.login-busy : Spinner {}
+   Caption { text: root.busy || root.login-busy ? (root.busy-label == "" ? "Working…" : root.busy-label) : root.notice; color: #c5cede; horizontal-alignment: center; vertical-alignment: center; horizontal-stretch: 1; }
+  }
+ }
+ if root.nav-tip != "" : Rectangle { x: 76px; y: root.tip-y; width: 180px; height: 40px; border-radius: 10px; background: #34415e; Text { text: root.nav-tip; color: #f0f4ff; horizontal-alignment: center; vertical-alignment: center; } }
+ if root.error-opacity > 0 : Rectangle { x: parent.width - self.width - 30px; y: 24px; width: 410px; height: 96px; border-radius: 16px; background: #633043; opacity: root.error-opacity;
+  VerticalLayout { padding: 16px; spacing: 6px; Text { text: "Couldn't sign in"; color: #ffe7ef; font-weight: 700; } Caption { text: root.login-error; color: #ffe7ef; } }
+ }
+}
