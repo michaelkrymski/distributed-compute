@@ -252,7 +252,7 @@ export default function BenchmarkPanel() {
         </span>
         <span className="badge">
           {training
-            ? `Real model training Â· ${compiled ? "compiled CUDA Â· " : ""}${precision}`
+            ? `Real model training · ${compiled ? "compiled CUDA · " : ""}${precision}`
             : "Synthetic compute + Hivemind averaging"}
         </span>
       </div>
@@ -318,7 +318,7 @@ export default function BenchmarkPanel() {
               >
                 <option value="synthetic">Synthetic connectivity / GEMM</option>
                 <option value="baseline-training">
-                  24.39M model Â· real training
+                  24.39M model · real training
                 </option>
               </select>
             </label>
@@ -403,13 +403,13 @@ export default function BenchmarkPanel() {
           <div className="section-title">
             <div>
               <span className="eyebrow">CONNECTION LOBBY</span>
-              <h2>{compiled ? "Connect one NVIDIA computer" : "Connect 1â€“10 computers"}</h2>
+              <h2>{compiled ? "Connect one NVIDIA computer" : "Connect 1–10 computers"}</h2>
             </div>
             <Users size={20} />
           </div>
           <p className="muted benchmark-intro">
             Each person launches an agent locally, then marks it ready here.
-            Starting this page never launches software on a teammateâ€™s computer.
+            Starting this page never launches software on a teammate’s computer.
           </p>
           {!data && (
             <p className="caption">
@@ -436,7 +436,7 @@ export default function BenchmarkPanel() {
                 <div className={`presence ${online ? "online" : ""}`} />
                 <div className="bench-agent-copy">
                   <b>
-                    {id.split(":")[0]} Â·{" "}
+                    {id.split(":")[0]} ·{" "}
                     {a?.device.hostname || a?.instanceId.slice(0, 8)}
                   </b>
                   <small>{a?.device.name ?? "Agent not connected"}</small>
@@ -506,7 +506,7 @@ export default function BenchmarkPanel() {
                   : phase === "lobby"
                     ? "Ready when the team is."
                     : phase === "countdown"
-                      ? "Starting togetherâ€¦"
+                      ? "Starting together…"
                       : phase === "warmup"
                         ? "Warming up."
                         : phase === "measuring"
@@ -526,7 +526,7 @@ export default function BenchmarkPanel() {
                 : `${warmup}s + ${measurement}s`}
             <small>
               {phase === "warmup"
-                ? "warmup remaining Â· excluded from results"
+                ? "warmup remaining · excluded from results"
                 : phase === "measuring"
                   ? "measurement time remaining"
                   : phase === "finished"
@@ -542,8 +542,8 @@ export default function BenchmarkPanel() {
               <Clock size={14} />
               15s shared countdown
             </span>
-            <span>01 Â· Warmup {warmup}s</span>
-            <span>02 Â· Measure {measurement}s</span>
+            <span>01 · Warmup {warmup}s</span>
+            <span>02 · Measure {measurement}s</span>
           </div>
           {coordinator && phase === "lobby" && (
             <button
@@ -594,7 +594,7 @@ export default function BenchmarkPanel() {
               : "Training throughput appears after complete reports"}
           </h2>
           <p>
-            24,388,992 parameters Â· context 512 Â· {precision} Â· FP32 weights and AdamW Â· microbatch {session?.config.microbatch ?? 1}{(session?.config.localSteps ?? 1) > 1 ? ` Â· ${session?.config.localSteps} local steps/sync` : ""} Â· approximately{" "}
+            24,388,992 parameters · context 512 · {precision} · FP32 weights and AdamW · microbatch {session?.config.microbatch ?? 1}{(session?.config.localSteps ?? 1) > 1 ? ` · ${session?.config.localSteps} local steps/sync` : ""} · approximately{" "}
             {fmt(session?.config.batchTokens ?? 32768)} tokens per optimizer step.
           </p>
           {groupTps > 0 && (
@@ -656,8 +656,8 @@ export default function BenchmarkPanel() {
                   <td>
                     {a.result!.measuredRounds}
                     <small>
-                      {a.result!.warmupRounds} warmup Â· {a.result!.failedRounds}{" "}
-                      failed Â· {a.result!.boundaryRounds} boundary
+                      {a.result!.warmupRounds} warmup · {a.result!.failedRounds}{" "}
+                      failed · {a.result!.boundaryRounds} boundary
                     </small>
                   </td>
                   <td>
@@ -670,7 +670,7 @@ export default function BenchmarkPanel() {
                         {`${fmt(a.result!.tokensPerSecond ?? 0)} tokens/s`}
                         {a.result!.localBatchTokens ? (
                           <small>
-                            {fmt(a.result!.localBatchTokens)} {(a.result!.localSteps ?? 1) > 1 ? `tok/step Ã— ${a.result!.localSteps}` : "tok/round"}
+                            {fmt(a.result!.localBatchTokens)} {(a.result!.localSteps ?? 1) > 1 ? `tok/step × ${a.result!.localSteps}` : "tok/round"}
                             {a.result!.workShare !== undefined
                               ? ` (${fmt(a.result!.workShare * 100)}%)`
                               : ""}
@@ -711,7 +711,7 @@ export default function BenchmarkPanel() {
               <>
                 A 25-million-element FP32 tensor is averaged through Hivemind
                 using FP16 communication compression. Agents also measure a
-                fixed 1024Ã—1024 synthetic matrix-multiplication workload. This
+                fixed 1024×1024 synthetic matrix-multiplication workload. This
                 tests group connectivity, averaging latency, and a simple local
                 compute workload. It does not train the theoretical model or
                 produce tokens/second for an LLM.
@@ -738,7 +738,7 @@ export default function BenchmarkPanel() {
           >
             Hivemind benchmark tools
           </a>
-          , join the teamâ€™s private LAN/VPN, then start an agent. Supply your
+          , join the team’s private LAN/VPN, then start an agent. Supply your
           access key through the local environment or hidden terminal prompt;
           never put it in Git or a URL.
         </p>
@@ -750,7 +750,7 @@ export default function BenchmarkPanel() {
         <p>
           The coordinator uses{" "}
           <code>
-            python -m glmbench coordinator --api â€¦ --host YOUR_PRIVATE_IP
+            python -m glmbench coordinator --api … --host YOUR_PRIVATE_IP
           </code>{" "}
           before everyone joins.
         </p>
