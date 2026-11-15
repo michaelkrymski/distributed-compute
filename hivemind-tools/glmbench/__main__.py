@@ -40,6 +40,8 @@ def main():
                 help="GPU index within CUDA/ROCm visible devices",
             )
         if name == "agent":
+            p.add_argument("--workload-factory", help="Explicit local module:function for an external project; never loaded from a server-supplied import path")
+            p.add_argument("--max-parameters", type=int, default=25_000_000, help="Local consent limit for the model or gradient payload; increase deliberately for larger projects")
             p.add_argument("--ready", action="store_true")
             p.add_argument("--output", default="results")
             p.add_argument("--threads", type=int, default=2)
@@ -69,9 +71,9 @@ def main():
         else:
             from .benchmark import coordinator, agent
 
-            if args.command == "agent" and (args.threads < 1 or args.device_index < 0):
+            if args.command == "agent" and (args.threads < 1 or args.device_index < 0 or not 1 <= args.max_parameters <= 2_000_000_000):
                 raise ValueError(
-                    "--threads must be positive and --device-index nonnegative"
+                    "--threads must be positive, --device-index nonnegative, and --max-parameters between 1 and 2B"
                 )
             (coordinator if args.command == "coordinator" else agent)(args, client)
     except KeyboardInterrupt:

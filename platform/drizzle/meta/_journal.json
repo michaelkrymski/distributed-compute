@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794774246406,
+      "tag": "0000_calm_sebastian_shaw",
+      "breakpoints": true
+    }
+  ]
+}

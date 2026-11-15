@@ -1,0 +1,19 @@
+{
+  "name": "distributed-compute-platform",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "validate": "node scripts/validate-artifact.mjs",
+    "db:generate": "drizzle-kit generate",
+    "dev": "wrangler dev --local --port 5195",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "drizzle-orm": "0.45.2",
+    "drizzle-kit": "0.31.10",
+    "wrangler": "4.92.0",
+    "esbuild": "0.25.12"
+  }
+}

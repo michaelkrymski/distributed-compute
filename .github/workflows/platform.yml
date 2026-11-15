@@ -1,0 +1,46 @@
+name: Shared platform and real CPU workers
+on:
+  workflow_dispatch:
+  push:
+    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", ".github/workflows/platform.yml"]
+  pull_request:
+    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", ".github/workflows/platform.yml"]
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install platform and CPU training dependencies
+        run: |
+          npm --prefix platform ci --no-audit --no-fund
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -e './training[test]' -e './hivemind-tools[test]'
+      - name: Real Worker HTTP, local D1, accounts, authorization and GPU-worker protocol
+        run: |
+          cd platform
+          npm run build
+          npm run validate
+          node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --local --persist-to .wrangler/state
+          node node_modules/wrangler/bin/wrangler.js dev --local --ip 127.0.0.1 --port 5195 --persist-to .wrangler/state > /tmp/compute-platform.log 2>&1 &
+          api_pid=$!
+          trap 'kill "$api_pid" || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:5195/api/health > /dev/null; then break; fi
+            sleep 1
+          done
+          npm test
+          node tests/create-worker-fixture.mjs
+          cd ..
+          python -m pytest hivemind-tools/tests -q
+          python hivemind-tools/tests/e2e_real_backend.py --api http://127.0.0.1:5195 --keys-file platform/work/cpu-worker-keys.json --agents 2 --workload baseline-training --warmup 5 --measure 20 --batch-tokens 512

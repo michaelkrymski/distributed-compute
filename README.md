@@ -2,6 +2,10 @@
 
 A Windows/Linux desktop client and coordination platform for teams contributing GPUs to shared PyTorch training and benchmarks. Supports NVIDIA CUDA, AMD ROCm on compatible Linux systems, and CPU smoke tests. Tailscale provides peer connectivity; Hivemind handles discovery and gradient averaging.
 
+## Shared teams and independent projects
+
+The [Compute web tool](https://michaelkrymski.me/compute/) provides account/team creation, project configuration, coordinator controls, benchmarks, training rooms and team administration. New teams share the service while keeping their users, keys and project state isolated. [Platform source and operations](platform/README.md) · [Model/workload adapters](platform/WORKLOADS.md).
+
 ## Start here
 
 - [Desktop app and installation](desktop/README.md)

@@ -159,7 +159,7 @@ def main():
             )
             assert r["complete"], (report["userId"], r)
             if a.workload == "baseline-training":
-                assert r["parameterCount"] == 24_388_992
+                assert r["parameterCount"] == session["config"]["payloadElements"]
                 assert r["processedTokens"] > 0 and r["tokensPerSecond"] > 0
                 assert r["optimizerSteps"] >= r["measuredRounds"]
                 assert (

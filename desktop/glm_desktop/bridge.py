@@ -101,7 +101,7 @@ def main():
             raise RuntimeError("The lobby changed. Refresh the desktop app before joining.")
         args = SimpleNamespace(host=payload["host"], port=0 if operation == "agent" else 40100,
             identity=None, device=payload.get("device", "auto"), device_index=0,
-            threads=2, ready=False, output=payload["output"])
+            threads=2, ready=False, output=payload["output"], max_parameters=payload.get("max_parameters", 25_000_000), workload_factory=payload.get("workload_factory"))
         (agent if operation == "agent" else coordinator)(args, client)
         return
     if operation in ("inspect", "train", "room", "bootstrap"):

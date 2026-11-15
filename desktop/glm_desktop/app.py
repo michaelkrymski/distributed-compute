@@ -25,7 +25,7 @@ def settings_path():
     return base / "GLM" / "desktop.json"
 
 
-PREFERENCES = ("api_url", "python_path", "use_wsl", "distro", "host", "device_index", "bundle", "peer", "worker_name", "shard", "output", "resume", "setup_complete")
+PREFERENCES = ("api_url", "python_path", "use_wsl", "distro", "host", "device_index", "bundle", "peer", "worker_name", "shard", "output", "resume", "setup_complete", "parameter_limit", "workload_factory")
 
 
 def save_preferences(path, values):
@@ -73,6 +73,8 @@ class Controller:
         window.use_wsl = sys.platform == "win32"
         window.python_path = "/home/YOUR_USER/gatorllm-venv/bin/python" if window.use_wsl else str(Path.home() / "gatorllm-venv/bin/python")
         window.output = "output/desktop"
+        window.parameter_limit = getattr(window, "parameter_limit", "25000000")
+        window.workload_factory = getattr(window, "workload_factory", "")
         try:
             values = json.loads(settings_path().read_text(encoding="utf-8"))
             for key in PREFERENCES:
@@ -402,6 +404,11 @@ class Controller:
                 if not self.api or self.ui.stale:
                     raise ValueError("Connect to your team first")
             payload = dict(operation=operation, device=DEVICES[self.ui.device_index], output=self.ui.output.strip())
+            if operation == "agent":
+                limit = int(getattr(self.ui, "parameter_limit", "25000000"))
+                if not 1 <= limit <= 2_000_000_000:
+                    raise ValueError("Choose a local parameter limit between 1 and 2B after reviewing device capacity.")
+                payload.update(max_parameters=limit, workload_factory=getattr(self.ui, "workload_factory", "").strip() or None)
             if operation in ("agent", "coordinator", "train", "room", "bootstrap"):
                 host = self.ui.host.strip()
                 address = ipaddress.ip_address(host)

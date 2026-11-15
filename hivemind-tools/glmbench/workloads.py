@@ -1,15 +1,24 @@
 """Load a supplied training workload without bundling a model in this package."""
 import importlib
+import re
 
 
-def training_workload(config, device, seed):
+def training_workload(config, device, seed, factory=None):
     if config.get("workload", "synthetic") != "baseline-training":
         return None
+    if config.get("runtime") == "external":
+        if not factory or not re.fullmatch(r"[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*:[a-zA-Z_]\w*", factory):
+            raise RuntimeError("This project needs your local workload adapter. Pass --workload-factory module:function explicitly after reviewing its code.")
+        module_name, attribute = factory.split(":")
+        workload = getattr(importlib.import_module(module_name), attribute)(config, device, seed)
+        if workload.parameter_count != config["payloadElements"] or workload.cfg.context != config["model"]["context"] or not re.fullmatch(r"[a-f0-9]{64}", workload.fingerprint):
+            raise RuntimeError("External workload does not match the project's parameter count, context or fingerprint contract")
+        return workload
     try:
         module = importlib.import_module("glmtrain.benchmark")
     except ImportError as error:
         raise RuntimeError(
-            "Model benchmark requires the theoretical branch. Install both packages: "
+            "Model benchmark requires the training package. Install both packages: "
             "python -m pip install -e ./training -e ./hivemind-tools"
         ) from error
     workload = module.TrainingWorkload(config, device, seed)

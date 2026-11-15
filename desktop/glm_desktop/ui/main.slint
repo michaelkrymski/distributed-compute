@@ -32,6 +32,8 @@ export component MainWindow inherits Window {
     in-out property <string> worker-name: "my-computer";
     in-out property <string> shard: "0";
     in-out property <string> output: "output/desktop";
+    in-out property <string> parameter-limit: "25000000";
+    in-out property <string> workload-factory;
     in-out property <bool> resume: false;
     in property <bool> connected: false;
     in property <bool> busy: false;
@@ -356,6 +358,10 @@ export component MainWindow inherits Window {
     } }
     Card { VerticalLayout { padding: 22px; spacing: 14px;
      Heading { text: "Training & storage"; font-size: 19px; }
+     Caption { text: "Local parameter limit. Raise this only after checking that the project fits this computer."; }
+     LineEdit { text <=> root.parameter-limit; placeholder-text: "Maximum parameters (default 25000000)"; enabled: !root.joined; }
+     Caption { text: "For an external model, explicitly select its reviewed local Python workload factory."; }
+     LineEdit { text <=> root.workload-factory; placeholder-text: "Optional local module:function"; enabled: !root.joined; }
      LineEdit { text <=> root.bundle; placeholder-text: "Local run bundle folder"; enabled: !root.joined; }
      LineEdit { text <=> root.output; placeholder-text: "Results / checkpoints directory"; enabled: !root.joined; }
      CheckBox { text: "Resume my checkpoint"; checked <=> root.resume; enabled: !root.joined; }

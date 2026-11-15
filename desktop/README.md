@@ -1,5 +1,9 @@
 # Distributed Compute
 
+Create your shared-service account, teams and projects at https://michaelkrymski.me/compute/. Generate a worker key for the chosen project, then enter that key and the shared service origin in this app. The key selects the project and inherits your current team role; it can be remembered in the OS credential store. Shared-service account passwords are managed on the website and are separate from legacy self-hosted administrator-password login.
+
+For models larger than 25M parameters, review device capacity and set the local parameter limit in Settings > Training & storage. External architectures also need an explicitly selected, reviewed local `module:function` workload factory. The server never chooses that import. See [workload adapters](../platform/WORKLOADS.md).
+
 > Personal repository migration: see [MIGRATION.md](../MIGRATION.md). Hosting URLs below are examples; configure your own server or enter your existing team server manually. No backend was moved by this source extraction.
 
 A Slint desktop client for contributors and organizers. Windows and Linux installers are built by the **Desktop installers** GitHub Actions workflow. Download its Windows setup executable or Linux tarball from the latest successful run for `codex/contributor-app`.

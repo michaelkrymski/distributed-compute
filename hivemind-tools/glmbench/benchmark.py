@@ -294,10 +294,10 @@ def agent(args, client):
     if config.get("protocol") != 3:
         raise RuntimeError("Unsupported benchmark protocol")
     if (
-        not 1 <= config["payloadElements"] <= 25_000_000
+        not 1 <= config["payloadElements"] <= getattr(args, "max_parameters", 25_000_000)
         or not 16 <= config["matrixSize"] <= 1024
     ):
-        raise RuntimeError("Unexpected benchmark workload size")
+        raise RuntimeError("Unexpected workload size or local parameter limit exceeded. Review the project and use --max-parameters to allow a larger model.")
     dht = start_dht(args.host, args.port, session["peers"])
     averager = None
     stop = threading.Event()
@@ -312,7 +312,7 @@ def agent(args, client):
         device, dtype = select_device(args.device, args.device_index)
         from .workloads import training_workload
 
-        workload = training_workload(config, device, int(instance[:8], 16))
+        workload = training_workload(config, device, int(instance[:8], 16), getattr(args, "workload_factory", None))
         size = config["matrixSize"]
         left = torch.randn(size, size, device=device, dtype=dtype)
         right = torch.randn_like(left)
@@ -793,7 +793,7 @@ def agent(args, client):
                 optimizerSteps=workload.steps,
                 meanLoss=statistics.mean(measured_losses) if measured_losses else 0,
                 modelFingerprint=workload.fingerprint,
-                note=f"Real {workload.precision.upper()} model forward/backward with FP32 weights and AdamW updates on generated token batches. Includes transfer and optimizer overhead; excludes corpus I/O, evaluation and checkpoint saving."
+                note=("Locally selected external workload adapter. Timing includes the work implemented by that adapter. " if config.get("runtime") == "external" else f"Real {workload.precision.upper()} model forward/backward with FP32 weights and AdamW updates on generated token batches. Includes transfer and optimizer overhead; excludes corpus I/O, evaluation and checkpoint saving.")
                 + (f" Synchronized every {getattr(workload, 'local_steps', 1)} local steps." if getattr(workload, "local_steps", 1) > 1 else "")
                 + (f" Rerouted work after dropout of {len(measure.dropped_members)} peer(s)." if measure.dropped_members else "")
                 + (" Incomplete/degraded run." if not result["complete"] else ""),
