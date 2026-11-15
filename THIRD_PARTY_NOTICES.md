@@ -30,4 +30,4 @@ This application uses that license option. The app has an About entry in the top
 
 ## Original project code
 
-Michael Krymski confirmed ownership of the original platform code and authorized Apache-2.0 licensing. That code is covered by LICENSE and NOTICE, copyright Michael Krymski. This does not relicense any third-party source, assets or dependencies. The repository remains private; making it public is a separate decision. See [PROVENANCE.md](PROVENANCE.md).
+Michael Krymski confirmed ownership of the original platform code and authorized Apache-2.0 licensing. That code is covered by LICENSE and NOTICE, copyright Michael Krymski. This does not relicense any third-party source, assets or dependencies. Michael Krymski authorized publishing the repository publicly on 2026-11-15. See [PROVENANCE.md](PROVENANCE.md).

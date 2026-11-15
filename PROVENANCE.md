@@ -1,6 +1,6 @@
 # Source provenance
 
-This private repository is a source-only extraction of the training/distributed compute platform from `GatorLLM/glm-0-team-2`, branch `codex/contributor-app`, commit `624d3edd3d3af49fb96c89771323c6ca4d8debee` (2026-11-15 snapshot). The original repository and deployed services were not transferred or deleted.
+This repository is a source-only extraction of the training/distributed compute platform from `GatorLLM/glm-0-team-2`, branch `codex/contributor-app`, commit `624d3edd3d3af49fb96c89771323c6ca4d8debee` (2026-11-15 snapshot). The original repository and deployed services were not transferred or deleted.
 
 Only tracked files were exported. Runtime databases, team keys, passwords, datasets, checkpoints, logs, results, and the hosted project's identity were not copied. New Git history avoids carrying unreviewed historical material into another repository. Original commit authors are retained by name in [ORIGINAL_AUTHORS.txt](ORIGINAL_AUTHORS.txt); their email addresses are omitted.
 

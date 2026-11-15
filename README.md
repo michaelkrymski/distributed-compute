@@ -19,12 +19,12 @@ python -m pip install -e ./desktop
 glm-desktop
 ```
 
-This repository is private: cloning requires your GitHub account to have access. GPU runtime installation is guided separately from GUI installation. Select your team's server in the app and use your reusable member key or administrator account. No keys, datasets or private results are included.
+GPU runtime installation is guided separately from GUI installation. Select your team's server in the app and use your reusable member key or administrator account. No keys, datasets or private results are included.
 
 This source move does not relocate the existing database or running service. The new checkout has no default production server; add your existing team's address manually, or configure a new deployment as documented in [MIGRATION.md](MIGRATION.md).
 
 ## Licensing and scope
 
-Original project code is licensed under [Apache-2.0](LICENSE), copyright Michael Krymski. The repository remains private. [Source provenance](PROVENANCE.md) records its history. [Third-party notices](THIRD_PARTY_NOTICES.md) cover Hivemind, DiLoCo implementations, Slint and distribution; those components retain their own terms.
+Original project code is licensed under [Apache-2.0](LICENSE), copyright Michael Krymski. The source repository is public. [Source provenance](PROVENANCE.md) records its history. [Third-party notices](THIRD_PARTY_NOTICES.md) cover Hivemind, DiLoCo implementations, Slint and distribution; those components retain their own terms.
 
 The included model is a reference workload. The optimizer uses periodic Hivemind gradient averaging; it is not a complete DiLoCo implementation. Python module names remain compatible with existing run bundles.

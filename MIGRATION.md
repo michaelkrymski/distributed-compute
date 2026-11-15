@@ -1,6 +1,6 @@
 # Personal repository migration
 
-Repository: https://github.com/michaelkrymski/distributed-compute (private). Product name: Distributed Compute. Original source remains in the organization repository; [PROVENANCE.md](PROVENANCE.md) records the snapshot.
+Repository: https://github.com/michaelkrymski/distributed-compute (public). Product name: Distributed Compute. Original source remains in the organization repository; [PROVENANCE.md](PROVENANCE.md) records the snapshot.
 
 ## Existing team installation
 
