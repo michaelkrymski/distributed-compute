@@ -6,7 +6,7 @@ Only tracked files were exported. Runtime databases, team keys, passwords, datas
 
 The extraction retains the desktop client, coordination/benchmark tools, reference model and trainer, dashboard/backend, setup scripts and CI. The model is an included reference workload; the platform can be developed independently.
 
-Original authors retain their rights. No project-wide license was present in the source checkout. This extraction does not assign their rights or grant a new open-source license. Keep it private until the relevant rights holders approve a project license and intended public redistribution. Dependency licenses do not license the group's original code. Private access is not a substitute for permission to redistribute others' work.
+No project-wide license was present in the source checkout. Michael Krymski confirmed that the original platform code is his own, temporarily hosted in the group repository, and authorized selecting and applying a license on 2026-11-15. That original code is now licensed under Apache-2.0, copyright Michael Krymski; see LICENSE and NOTICE. Commit-author history is preserved for provenance and does not determine copyright ownership. Third-party code and assets retain their existing rights and license terms. This license addition is in the personal repository; it does not change the organization repository.
 
 ## Migration changes
 

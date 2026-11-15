@@ -1,8 +1,10 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 name = "glm-desktop"
 version = "0.1.0"
 description = "Cross-platform desktop client for distributed training and benchmarks"

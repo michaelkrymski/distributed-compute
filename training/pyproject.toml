@@ -1,8 +1,10 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 name = "glm-training"
 version = "0.1.0"
 description = "A small, shared Hivemind language-model training experiment"

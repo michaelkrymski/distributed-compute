@@ -25,6 +25,6 @@ This source move does not relocate the existing database or running service. The
 
 ## Licensing and scope
 
-This is a private development repository, not an open-source release. [Source provenance](PROVENANCE.md) records original team source and rights that still need agreement before a public release. [Third-party notices](THIRD_PARTY_NOTICES.md) cover Hivemind, DiLoCo implementations, Slint and distribution.
+Original project code is licensed under [Apache-2.0](LICENSE), copyright Michael Krymski. The repository remains private. [Source provenance](PROVENANCE.md) records its history. [Third-party notices](THIRD_PARTY_NOTICES.md) cover Hivemind, DiLoCo implementations, Slint and distribution; those components retain their own terms.
 
 The included model is a reference workload. The optimizer uses periodic Hivemind gradient averaging; it is not a complete DiLoCo implementation. Python module names remain compatible with existing run bundles.
