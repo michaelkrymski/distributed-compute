@@ -1,7 +1,16 @@
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
+
+
+def scoped_manifest(manifest, namespace):
+    if not re.fullmatch(r"[-a-zA-Z0-9._]{1,200}", namespace):
+        raise ValueError("Use a simple namespace containing letters, digits, dots, hyphens or underscores")
+    # Hivemind averaging prefixes reject every dot, including dots inside IDs.
+    suffix = hashlib.sha256(namespace.encode()).hexdigest()
+    return {**manifest, "rendezvous_run_id": manifest["run_id"], "run_id": manifest["run_id"] + "_" + suffix}
 
 
 def main():
@@ -96,9 +105,7 @@ def main():
             return
         manifest = load_bundle(args.bundle)
         if args.namespace:
-            if not re.fullmatch(r"[-a-zA-Z0-9._]{1,200}", args.namespace):
-                raise ValueError("Use a simple namespace containing letters, digits, dots, hyphens or underscores")
-            manifest = {**manifest, "rendezvous_run_id": manifest["run_id"], "run_id": manifest["run_id"] + "." + args.namespace}
+            manifest = scoped_manifest(manifest, args.namespace)
         if args.command == "inspect":
             from .model import ModelConfig
 
