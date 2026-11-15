@@ -2,9 +2,9 @@ name: Shared platform and real CPU workers
 on:
   workflow_dispatch:
   push:
-    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", ".github/workflows/platform.yml"]
+    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", "training/glmtrain/__main__.py", "desktop/glm_desktop/room_worker.py", ".github/workflows/platform.yml"]
   pull_request:
-    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", ".github/workflows/platform.yml"]
+    paths: ["platform/**", "hivemind-tools/**", "training/glmtrain/adapters.py", "training/glmtrain/__main__.py", "desktop/glm_desktop/room_worker.py", ".github/workflows/platform.yml"]
 permissions:
   contents: read
 jobs:
@@ -44,3 +44,4 @@ jobs:
           cd ..
           python -m pytest hivemind-tools/tests -q
           python hivemind-tools/tests/e2e_real_backend.py --api http://127.0.0.1:5195 --keys-file platform/work/cpu-worker-keys.json --agents 2 --workload baseline-training --warmup 5 --measure 20 --batch-tokens 512
+          GLM_API_BASE=http://127.0.0.1:5195 GLM_KEYS_FILE=$PWD/platform/work/cpu-worker-keys.json python desktop/tests/room_cpu_acceptance.py

@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 from pathlib import Path
 
 
@@ -25,6 +26,7 @@ def main():
     )
     for p in (bootstrap, train, status, inspect):
         p.add_argument("--bundle", required=True)
+        p.add_argument("--namespace", help="Optional project/room isolation suffix; all workers in a room must use the same value")
     for p in (bootstrap, train, status):
         p.add_argument(
             "--host",
@@ -93,6 +95,10 @@ def main():
             print(json.dumps(manifest, indent=2))
             return
         manifest = load_bundle(args.bundle)
+        if args.namespace:
+            if not re.fullmatch(r"[-a-zA-Z0-9._]{1,200}", args.namespace):
+                raise ValueError("Use a simple namespace containing letters, digits, dots, hyphens or underscores")
+            manifest = {**manifest, "run_id": manifest["run_id"] + "." + args.namespace}
         if args.command == "inspect":
             from .model import ModelConfig
 

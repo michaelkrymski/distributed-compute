@@ -18,8 +18,12 @@ export async function stateRead(db, projectId, kind) {
   return value;
 }
 function settings(b, project, previous = {}) {
-  const config = benchmarkSettings(b.warmupSeconds ?? previous.warmupSeconds ?? 60,b.measureSeconds ?? previous.measureSeconds ?? 300,b.workload ?? previous.workload ?? "baseline-training",b.batchTokens ?? previous.batchTokens ?? 98304,b.trainingProfile ?? previous.trainingProfile ?? "optimized-fp32",b.microbatch ?? previous.microbatch ?? 4,b.localSteps ?? previous.localSteps ?? 1);
+  const context = project.spec.model.context;
+  const batch = b.batchTokens ?? previous.batchTokens ?? Math.ceil(98304/context)*context;
+  if (!integer(batch,context,262144) || batch % context) fail("Tokens per exchange must be a positive multiple of this project's context length, up to 262144.");
+  const config = benchmarkSettings(b.warmupSeconds ?? previous.warmupSeconds ?? 60,b.measureSeconds ?? previous.measureSeconds ?? 300,b.workload ?? previous.workload ?? "baseline-training",512,b.trainingProfile ?? previous.trainingProfile ?? "optimized-fp32",b.microbatch ?? previous.microbatch ?? 4,b.localSteps ?? previous.localSteps ?? 1);
   if (!config) fail("Invalid benchmark settings. Warmup: 0–600s; measurement: 10–3600s. Select compatible workload/profile settings.");
+  config.batchTokens = batch;
   config.model = project.spec.model;
   config.payloadElements = config.workload === "baseline-training" ? project.spec.parameters : Math.min(project.spec.parameters,25000000);
   config.trainingTokens = project.spec.targetTokens;

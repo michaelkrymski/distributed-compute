@@ -66,3 +66,10 @@ configuration and sessions; desktop workers use reusable keys saved locally.
 The room protocol accepts a verified bundle fingerprint and reachable peer, then
 freezes ready workers and shard assignments on Start. Workers report their own
 loss/epoch/nominal token progress. No dataset or checkpoint upload is required.
+
+Shared-service corpus rooms validate the prepared bundle against the project's
+model and token goal. Updated desktop workers also use a namespace suffix made
+from the project ID and room ID, so reusing a bundle cannot accidentally merge
+separate projects' optimizer state. For CLI status on such a room, pass
+`--namespace PROJECT_ID.ROOM_ID`. Each team still needs a trusted private
+Tailscale network: HTTP keys do not authenticate arbitrary Hivemind peer traffic.

@@ -17,9 +17,10 @@ def main():
     if urlsplit(base).hostname not in ("127.0.0.1", "localhost"):
         raise RuntimeError("Local test backend only")
     repo = Path(__file__).resolve().parents[2]
-    keys = json.loads((repo / "team-dashboard/work/team-access-keys.json").read_text())
+    keys = json.loads(Path(os.environ.get("GLM_KEYS_FILE", str(repo / "team-dashboard/work/team-access-keys.json"))).read_text())
     client = Client(base, keys["michaelkrymski"])
     client.url = base + "/api/rooms"
+    project = client.get().get("project")
     processes, handles = [], []
     with tempfile.TemporaryDirectory(prefix="glm-room-") as temp:
         root = Path(temp)
@@ -27,6 +28,9 @@ def main():
         (root / "val.txt").write_text("Birds rest in the trees.\n" * 100)
         config = json.loads((repo / "training/configs/smoke.json").read_text())
         config["training"].update(target_batch_tokens=4096, target_tokens=8192, data_shards=2)
+        if project:
+            config["model"] = project["model"]
+            config["training"]["target_tokens"] = project["targetTokens"]
         (root / "config.json").write_text(json.dumps(config))
         manifest = prepare(root / "train.txt", root / "val.txt", root / "config.json", root / "bundle")
 

@@ -18,6 +18,14 @@ def run(payload, manifest, cli):
     room=state.get("room")
     if not room or room["phase"]!="lobby" or room["fingerprint"]!=manifest["fingerprint"]:
         raise RuntimeError("Open training room and matching prepared bundle required")
+    project = state.get("project") or {}
+    namespace = None
+    if project.get("id"):
+        if project.get("runtime") == "external":
+            raise RuntimeError("This project requires its own local corpus trainer; the included desktop corpus worker supports the configured decoder")
+        if manifest["model"] != project.get("model") or manifest["training"]["target_tokens"] != project.get("targetTokens"):
+            raise RuntimeError("The run bundle does not match this project's model or token goal. Download its configuration and prepare a matching bundle.")
+        namespace = project["id"] + "." + room["id"]
     instance=uuid.uuid4().hex
     room_id=room["id"]
     client.post(action="join",roomId=room_id,instanceId=instance,fingerprint=manifest["fingerprint"],name=payload["name"],device=torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
@@ -64,6 +72,7 @@ def run(payload, manifest, cli):
                     os.kill(os.getpid(),signal.SIGTERM);return
     thread=threading.Thread(target=heartbeat,daemon=True);thread.start()
     sys.argv=["glmtrain","train","--bundle",payload["bundle"],"--host",payload["host"],"--peer",room["peer"],"--name",instance,"--shard",str(mine["shard"]),"--output",payload["output"],"--min-peers",str(len(json.loads(room["expected"]))),"--join-timeout","300","--device","cpu" if selected.type=="cpu" else "cuda"]
+    if namespace: sys.argv.extend(["--namespace", namespace])
     if mine["leader"]:sys.argv.append("--start-new")
     elif payload.get("resume"):sys.argv.append("--resume")
     sys.stdout=Reporter()

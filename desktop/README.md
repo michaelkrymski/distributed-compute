@@ -6,7 +6,7 @@ For models larger than 25M parameters, review device capacity and set the local 
 
 > Personal repository migration: see [MIGRATION.md](../MIGRATION.md). Hosting URLs below are examples; configure your own server or enter your existing team server manually. No backend was moved by this source extraction.
 
-A Slint desktop client for contributors and organizers. Windows and Linux installers are built by the **Desktop installers** GitHub Actions workflow. Download its Windows setup executable or Linux tarball from the latest successful run for `codex/contributor-app`.
+A Slint desktop client for contributors and organizers. Windows and Linux installers are built by the **Desktop installers** GitHub Actions workflow. Download its Windows setup executable or Linux tarball from the latest successful run for `main`.
 
 ## Install and connect
 
