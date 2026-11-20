@@ -22,4 +22,4 @@ These are independent measurements. Their sum describes the combined throughput 
 
 ### Reuse the original GatorLLM Team 2 setup
 
-In both Kaggle notebooks, set `MODE = "benchmark"` and `BACKEND = "team2"`, enable Internet, and enter your own existing `glm_` access key at the prompt. The key is checked by the [Team 2 dashboard](https://gatorllm-team-2-lab.netlify.app). The organizer password is for dashboard sign-in. The notebook uses the bundled 24.39M Team 2 reference decoder and saves its throughput report locally. You can run it without creating a room or a new Compute account.
+In both Kaggle notebooks, set `MODE = "benchmark"` and `BACKEND = "team2"`, enable Internet, and enter your own existing Team 2 access key at the prompt, including its original prefix (such as `gator_` or `glm_`). The [Team 2 dashboard](https://gatorllm-team-2-lab.netlify.app) validates the full key. The organizer password is for dashboard sign-in. The notebook uses the bundled 24.39M Team 2 reference decoder and saves its throughput report locally. You can run it without creating a room or a new Compute account.

@@ -68,10 +68,11 @@ def kaggle_benchmark():
     if BACKEND not in BACKEND_HOSTS:
         raise ValueError('Set BACKEND to "compute" or "team2".')
     key_kind = "Team 2 access key" if BACKEND == "team2" else "Compute project worker key"
-    prefix = "glm_" if BACKEND == "team2" else "dc_worker_"
     key = getpass(f"{key_kind}: ").strip()
-    if not key.startswith(prefix):
-        raise ValueError(f"Use your own {key_kind} starting with {prefix}.")
+    if not key or len(key) > 249 or any(not 33 <= ord(char) <= 126 for char in key):
+        raise ValueError(f"Enter your own {key_kind}.")
+    if BACKEND == "compute" and not key.startswith("dc_worker_"):
+        raise ValueError("Use your own Compute project worker key starting with dc_worker_.")
     project = fetch_project(key, BACKEND)
     del key
     if not project or project.get("runtime") != "glm-decoder-v1":
