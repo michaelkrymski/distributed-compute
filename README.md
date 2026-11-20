@@ -10,6 +10,7 @@ The [Compute web tool](https://michaelkrymski.me/compute/) provides account/team
 
 - [Desktop app and installation](desktop/README.md)
 - [Guided machine setup](setup/QUICKSTART.md)
+- [Kaggle one-cell GPU training test](setup/KAGGLE.md)
 - [Administrator/backend setup](desktop/PROJECT-SETUP.md)
 - [Real model benchmark](training/BENCHMARK.md)
 - [Training and reference model](training/README.md)
