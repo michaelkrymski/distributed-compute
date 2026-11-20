@@ -111,7 +111,6 @@ class KaggleTailnet:
         address = subprocess.check_output([*self.cli, "ip", "-4"], text=True, timeout=10).strip()
         self.address = IPv4Address(address)
         print(f"Ready: {self.address} on TCP {PEER_PORT}. Keep this notebook running.", flush=True)
-        print('In a new cell, run test_kaggle_peer("OTHER_NOTEBOOK_IP").', flush=True)
 
     def probe(self, address):
         peer = IPv4Address(address.strip())
@@ -161,3 +160,13 @@ if __name__ == "__main__":
     except BaseException:
         kaggle_tailnet.close()
         raise
+    while True:
+        peer_ip = input("Paste the other notebook's Ready IP (or press Enter to skip): ").strip()
+        if not peer_ip:
+            break
+        try:
+            test_kaggle_peer(peer_ip)
+        except (ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
+            print(f"TCP check failed: {error}", flush=True)
+        else:
+            break

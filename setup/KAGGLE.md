@@ -28,7 +28,7 @@ In both Kaggle notebooks, set `MODE = "benchmark"` and `BACKEND = "team2"`, enab
 
 1. Each person opens a private Kaggle notebook with **Internet on**. Leave the accelerator on **None** for this network test. Both users need access to the same trusted tailnet.
 2. Paste the [Tailscale setup cell](https://raw.githubusercontent.com/michaelkrymski/distributed-compute/main/setup/kaggle_tailscale.py) into both notebooks and run it. Open each notebook's own sign-in link and select the same tailnet. No Compute key or Tailscale auth key goes into the cell.
-3. After both notebooks print `Ready`, exchange the two Tailscale IPs. On each side, run `test_kaggle_peer("OTHER_NOTEBOOK_IP")` in a new cell. Expect `TCP PASS` on both sides.
+3. After both notebooks print `Ready`, exchange the two Tailscale IPs. Paste the other notebook's IP into the prompt in the same running setup cell and press Enter. Expect `TCP PASS` on both sides. If you skip the prompt, you can still run `test_kaggle_peer("OTHER_NOTEBOOK_IP")` in another cell in the same kernel.
 4. When finished, run `stop_kaggle_tailnet()` in both notebooks or stop both sessions.
 
 The cell runs the official Tailscale binaries in userspace with an ephemeral node and a tailnet-only TCP listener on port 40190. It downloads a checksum-pinned archive and does not need root, a TUN device, or an accelerator. Both sides must be online, and the tailnet policy must allow TCP 40190 between them. The probe verifies bidirectional TCP using the userspace proxy. The existing Hivemind worker still needs a compatible transport before it can use this path for gradient exchange.
