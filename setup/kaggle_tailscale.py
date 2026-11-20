@@ -1,6 +1,7 @@
 """Paste into a private, Internet-enabled Kaggle notebook."""
 
 import atexit
+from datetime import datetime, timezone
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import IPv4Address, IPv4Network
@@ -23,6 +24,11 @@ SOCKS_PORT = 40191
 TAILNET_RANGE = IPv4Network("100.64.0.0/10")
 # Optional. Leave blank if you are still waiting for your teammate's IP.
 PEER_IP = ""
+
+
+def status(step, message):
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    print(f"[{timestamp}] [{step}] {message}", flush=True)
 
 
 class ProbeHandler(BaseHTTPRequestHandler):
@@ -56,7 +62,7 @@ class KaggleTailnet:
 
         name = f"tailscale_{VERSION}_amd64"
         archive = self.root / f"{name}.tgz"
-        print("Downloading Tailscale from its official package server…", flush=True)
+        status("01/download", "Fetching Tailscale from its official package server.")
         subprocess.run([
             "curl", "--fail", "--silent", "--show-error", "--max-time", "60",
             "--proto", "=https", "--output", str(archive),
@@ -68,12 +74,14 @@ class KaggleTailnet:
                 digest.update(block)
         if digest.hexdigest() != ARCHIVE_SHA256:
             raise RuntimeError("Downloaded Tailscale archive failed its checksum.")
+        status("02/verify", "Archive checksum matched. Extracting the two binaries.")
         with tarfile.open(archive) as bundle:
             for binary in ("tailscale", "tailscaled"):
                 with bundle.extractfile(f"{name}/{binary}") as source, (self.root / binary).open("wb") as target:
                     shutil.copyfileobj(source, target)
                 (self.root / binary).chmod(0o700)
 
+        status("03/daemon", "Starting tailscaled in userspace.")
         with (self.root / "daemon.log").open("w") as log:
             self.process = subprocess.Popen([
                 str(self.root / "tailscaled"), "--tun=userspace-networking", "--state=mem:",
@@ -85,9 +93,10 @@ class KaggleTailnet:
             if self.process.poll() is not None or monotonic() >= deadline:
                 raise RuntimeError("Tailscale daemon did not start. Restart the Kaggle kernel and retry.")
             sleep(0.2)
+        status("04/daemon", "Local control socket is available.")
 
         hostname = f"glm-kaggle-{uuid4().hex[:8]}"
-        print("Open the sign-in link below and choose your team's tailnet.", flush=True)
+        status("05/login", "Open the sign-in link in a separate tab and choose your team's tailnet.")
         # Relay CLI output to the notebook as it arrives so login can finish interactively.
         with subprocess.Popen([
             *self.cli, "up", "--timeout=3m", f"--hostname={hostname}",
@@ -102,14 +111,20 @@ class KaggleTailnet:
                 if login.poll() is None:
                     login.terminate()
                 raise
+        status("06/login", "tailscale up returned successfully.")
 
+        status("07/listener", "Starting the local probe server.")
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), ProbeHandler)
         self.server_thread = Thread(target=self.server.serve_forever, daemon=True)
         self.server_thread.start()
-        subprocess.run([
+        status("08/forward", f"Configuring the tailnet TCP forwarder on port {PEER_PORT}.")
+        forward = subprocess.run([
             *self.cli, "serve", "--bg", f"--tcp={PEER_PORT}",
             f"tcp://127.0.0.1:{self.server.server_port}",
-        ], check=True, capture_output=True, timeout=15)
+        ], capture_output=True, text=True, timeout=15)
+        if forward.returncode:
+            raise RuntimeError(f"Tailscale Serve failed: {forward.stderr.strip() or forward.stdout.strip()}")
+        status("09/address", "TCP forwarder configured. Reading this node's tailnet IP.")
         address = subprocess.check_output([*self.cli, "ip", "-4"], text=True, timeout=10).strip()
         self.address = IPv4Address(address)
         print(f"Ready: {self.address} on TCP {PEER_PORT}. Keep this notebook running.", flush=True)
@@ -155,13 +170,17 @@ def stop_kaggle_tailnet():
 
 
 if __name__ == "__main__":
+    status("00/start", "Kaggle Tailscale diagnostics v1. This cell never waits for IP input.")
     if "kaggle_tailnet" in globals():
         stop_kaggle_tailnet()
     kaggle_tailnet = KaggleTailnet()
     try:
         kaggle_tailnet.start()
-    except BaseException:
+    except BaseException as error:
+        status("error", f"{type(error).__name__}: {error}")
         kaggle_tailnet.close()
         raise
     if PEER_IP.strip():
+        status("10/probe", "Checking the configured peer.")
         test_kaggle_peer(PEER_IP)
+    status("done", "Setup cell finished. Tailscale stays active while this kernel is alive.")
