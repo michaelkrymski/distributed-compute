@@ -11,28 +11,45 @@ from time import monotonic
 
 # Set to "benchmark" on both notebooks to compare their independent GPU throughput.
 MODE = "smoke"
+BACKEND = "compute"  # Set to "team2" for the original GatorLLM dashboard.
 MEASURE_SECONDS = 60
 MODEL_REVISION = "11898d27ec28bb4dc834675921b19f29aa305f27"
+BACKEND_HOSTS = {
+    "compute": "distributed-compute-platform.mkrymski.chatgpt.site",
+    "team2": "gatorllm-team-2-lab.netlify.app",
+}
 
 
-def fetch_project(key):
+def fetch_project(key, backend):
     from http.client import HTTPSConnection
 
     # Use the exact first-party host and do not follow redirects with a key.
-    connection = HTTPSConnection("distributed-compute-platform.mkrymski.chatgpt.site", timeout=15)
+    connection = HTTPSConnection(BACKEND_HOSTS[backend], timeout=15)
     try:
         connection.request("GET", "/api/benchmark", headers={
             "Authorization": f"Bearer {key}",
-            "User-Agent": "glmbench-kaggle/1.0",
+            "User-Agent": "glmbench/0.4.0",
         })
         response = connection.getresponse()
         if response.status in (401, 403):
-            raise RuntimeError(f"Backend returned HTTP {response.status}. Check the project worker key and its access.")
+            raise RuntimeError(f"Backend returned HTTP {response.status}. Check your access key for {BACKEND_HOSTS[backend]}.")
         if response.status != 200:
             raise RuntimeError(f"Backend returned HTTP {response.status}.")
-        return json.loads(response.read()).get("project")
+        state = json.loads(response.read())
+        if not isinstance(state.get("user"), dict) or not state["user"].get("id"):
+            raise RuntimeError("The backend did not return an authenticated user.")
+        if backend == "team2":
+            # The legacy API authenticates team members but has no projects.
+            return {
+                "id": "gatorllm-team-2-baseline",
+                "name": "GatorLLM Team 2 baseline",
+                "runtime": "glm-decoder-v1",
+                "model": json.loads(BUNDLED_FILES["configs/baseline.json"])["model"],
+                "parameters": 24_388_992,
+            }
+        return state.get("project")
     except OSError:
-        raise RuntimeError("Could not reach the Compute backend. Enable Internet in this Kaggle notebook and retry.") from None
+        raise RuntimeError("Could not reach the selected backend. Enable Internet in this Kaggle notebook and retry.") from None
     finally:
         connection.close()
 
@@ -48,10 +65,14 @@ def kaggle_benchmark():
         raise RuntimeError("Select GPU T4 x2 in Kaggle's Accelerator settings.")
     if type(MEASURE_SECONDS) is not int or not 10 <= MEASURE_SECONDS <= 180:
         raise ValueError("Use a measurement duration of 10–180 seconds.")
-    key = getpass("Compute project worker key: ").strip()
-    if not key.startswith("dc_worker_"):
-        raise ValueError("Use your own dc_worker_ key from the shared Compute project.")
-    project = fetch_project(key)
+    if BACKEND not in BACKEND_HOSTS:
+        raise ValueError('Set BACKEND to "compute" or "team2".')
+    key_kind = "Team 2 access key" if BACKEND == "team2" else "Compute project worker key"
+    prefix = "glm_" if BACKEND == "team2" else "dc_worker_"
+    key = getpass(f"{key_kind}: ").strip()
+    if not key.startswith(prefix):
+        raise ValueError(f"Use your own {key_kind} starting with {prefix}.")
+    project = fetch_project(key, BACKEND)
     del key
     if not project or project.get("runtime") != "glm-decoder-v1":
         raise RuntimeError("Select an included decoder project in Compute.")
@@ -67,7 +88,10 @@ def kaggle_benchmark():
     output = Path("/kaggle/working/glm-kaggle-benchmark.json")
     if not output.parent.is_dir():
         output = Path.cwd() / output.name
-    report = {"status": "incomplete", "mode": "independent-single-gpu", "projectId": project["id"]}
+    report = {
+        "status": "incomplete", "mode": "independent-single-gpu",
+        "backend": BACKEND, "projectId": project["id"],
+    }
     output.write_text(json.dumps(report), encoding="utf-8")
 
     torch.manual_seed(42)

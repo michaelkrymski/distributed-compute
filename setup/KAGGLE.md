@@ -19,3 +19,7 @@ The test targets under five minutes once the notebook starts executing, with a f
 The notebook authenticates with the shared Compute service and reads the selected project's decoder configuration. It uses one T4 per notebook, warms up for 5 seconds, then measures real FP32 AdamW updates on generated tokens. It supports decoder projects up to 25M parameters and 512 context. The report records a configuration hash and code revision so you can confirm both accounts ran the same workload.
 
 These are independent measurements. Their sum describes the combined throughput of two independent jobs. The service does not collect these reports as shared benchmark results. To measure two GPUs updating one model using the existing Hivemind benchmark, both workers must reach each other and a coordinator over the trusted peer network. Kaggle peer connectivity has not been verified.
+
+### Reuse the original GatorLLM Team 2 setup
+
+In both Kaggle notebooks, set `MODE = "benchmark"` and `BACKEND = "team2"`, enable Internet, and enter your own existing `glm_` access key at the prompt. The key is checked by the [Team 2 dashboard](https://gatorllm-team-2-lab.netlify.app). The organizer password is for dashboard sign-in. The notebook uses the bundled 24.39M Team 2 reference decoder and saves its throughput report locally. You can run it without creating a room or a new Compute account.
