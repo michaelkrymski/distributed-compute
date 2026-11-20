@@ -21,6 +21,8 @@ ARCHIVE_SHA256 = "e56693ff74a64f2591b7e819c280635a100aae1ddfb0ef058fcd052b7cd8d1
 PEER_PORT = 40190
 SOCKS_PORT = 40191
 TAILNET_RANGE = IPv4Network("100.64.0.0/10")
+# Optional. Leave blank if you are still waiting for your teammate's IP.
+PEER_IP = ""
 
 
 class ProbeHandler(BaseHTTPRequestHandler):
@@ -111,6 +113,7 @@ class KaggleTailnet:
         address = subprocess.check_output([*self.cli, "ip", "-4"], text=True, timeout=10).strip()
         self.address = IPv4Address(address)
         print(f"Ready: {self.address} on TCP {PEER_PORT}. Keep this notebook running.", flush=True)
+        print('To check your teammate, run test_kaggle_peer("THEIR_READY_IP") in a new cell.', flush=True)
 
     def probe(self, address):
         peer = IPv4Address(address.strip())
@@ -160,13 +163,5 @@ if __name__ == "__main__":
     except BaseException:
         kaggle_tailnet.close()
         raise
-    while True:
-        peer_ip = input("Paste the other notebook's Ready IP (or press Enter to skip): ").strip()
-        if not peer_ip:
-            break
-        try:
-            test_kaggle_peer(peer_ip)
-        except (ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
-            print(f"TCP check failed: {error}", flush=True)
-        else:
-            break
+    if PEER_IP.strip():
+        test_kaggle_peer(PEER_IP)
