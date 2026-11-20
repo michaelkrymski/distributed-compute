@@ -23,3 +23,12 @@ These are independent measurements. Their sum describes the combined throughput 
 ### Reuse the original GatorLLM Team 2 setup
 
 In both Kaggle notebooks, set `MODE = "benchmark"` and `BACKEND = "team2"`, enable Internet, and enter your own existing Team 2 access key at the prompt, including its original prefix (such as `gator_` or `glm_`). The [Team 2 dashboard](https://gatorllm-team-2-lab.netlify.app) validates the full key. The organizer password is for dashboard sign-in. The notebook uses the bundled 24.39M Team 2 reference decoder and saves its throughput report locally. You can run it without creating a room or a new Compute account.
+
+## Test Tailscale between Kaggle notebooks
+
+1. Each person opens a private Kaggle notebook with **Internet on**. Leave the accelerator on **None** for this network test. Both users need access to the same trusted tailnet.
+2. Paste the [Tailscale setup cell](https://raw.githubusercontent.com/michaelkrymski/distributed-compute/main/setup/kaggle_tailscale.py) into both notebooks and run it. Open each notebook's own sign-in link and select the same tailnet. No Compute key or Tailscale auth key goes into the cell.
+3. After both notebooks print `Ready`, exchange the two Tailscale IPs. On each side, run `test_kaggle_peer("OTHER_NOTEBOOK_IP")` in a new cell. Expect `TCP PASS` on both sides.
+4. When finished, run `stop_kaggle_tailnet()` in both notebooks or stop both sessions.
+
+The cell runs the official Tailscale binaries in userspace with an ephemeral node and a tailnet-only TCP listener on port 40190. It downloads a checksum-pinned archive and does not need root, a TUN device, or an accelerator. Both sides must be online, and the tailnet policy must allow TCP 40190 between them. The probe verifies bidirectional TCP using the userspace proxy. The existing Hivemind worker still needs a compatible transport before it can use this path for gradient exchange.
