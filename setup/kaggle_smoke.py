@@ -9,13 +9,113 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 
 
+# Set to "benchmark" on both notebooks to compare their independent GPU throughput.
+MODE = "smoke"
+MEASURE_SECONDS = 60
+MODEL_REVISION = "11898d27ec28bb4dc834675921b19f29aa305f27"
+
+
+def fetch_project(key):
+    from http.client import HTTPSConnection
+
+    # Use the exact first-party host and do not follow redirects with a key.
+    connection = HTTPSConnection("distributed-compute-platform.mkrymski.chatgpt.site", timeout=15)
+    try:
+        connection.request("GET", "/api/benchmark", headers={
+            "Authorization": f"Bearer {key}",
+            "User-Agent": "glmbench-kaggle/1.0",
+        })
+        response = connection.getresponse()
+        if response.status in (401, 403):
+            raise RuntimeError(f"Backend returned HTTP {response.status}. Check the project worker key and its access.")
+        if response.status != 200:
+            raise RuntimeError(f"Backend returned HTTP {response.status}.")
+        return json.loads(response.read()).get("project")
+    except OSError:
+        raise RuntimeError("Could not reach the Compute backend. Enable Internet in this Kaggle notebook and retry.") from None
+    finally:
+        connection.close()
+
+
+def kaggle_benchmark():
+    from getpass import getpass
+    from hashlib import sha256
+    from types import ModuleType
+
+    import torch
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("Select GPU T4 x2 in Kaggle's Accelerator settings.")
+    if type(MEASURE_SECONDS) is not int or not 10 <= MEASURE_SECONDS <= 180:
+        raise ValueError("Use a measurement duration of 10–180 seconds.")
+    key = getpass("Compute project worker key: ").strip()
+    if not key.startswith("dc_worker_"):
+        raise ValueError("Use your own dc_worker_ key from the shared Compute project.")
+    project = fetch_project(key)
+    del key
+    if not project or project.get("runtime") != "glm-decoder-v1":
+        raise RuntimeError("Select an included decoder project in Compute.")
+
+    module = ModuleType("_glm_kaggle_model")
+    sys.modules[module.__name__] = module
+    exec(compile(BUNDLED_FILES["glmtrain/model.py"], "glmtrain/model.py", "exec"), module.__dict__)
+    config = module.ModelConfig(**project["model"])
+    count = config.parameter_count()
+    if count != project["parameters"] or count > 25_000_000 or config.context > 512:
+        raise RuntimeError("This notebook supports matching decoder projects up to 25M parameters and 512 context.")
+    fingerprint = sha256(json.dumps(project["model"], sort_keys=True).encode()).hexdigest()
+    output = Path("/kaggle/working/glm-kaggle-benchmark.json")
+    if not output.parent.is_dir():
+        output = Path.cwd() / output.name
+    report = {"status": "incomplete", "mode": "independent-single-gpu", "projectId": project["id"]}
+    output.write_text(json.dumps(report), encoding="utf-8")
+
+    torch.manual_seed(42)
+    device = torch.device("cuda:0")
+    model = module.LanguageModel(config).to(device).train()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0003, betas=(0.9, 0.95), weight_decay=0.1)
+
+    def step():
+        tokens = torch.randint(config.vocab_size, (1, config.context + 1), device=device)
+        optimizer.zero_grad(set_to_none=True)
+        _, loss = model(tokens[:, :-1], tokens[:, 1:])
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0, error_if_nonfinite=True)
+        optimizer.step()
+        torch.cuda.synchronize(device)
+        return loss
+
+    print(f"{project['name']} | {torch.cuda.get_device_name(0)} | {count:,} parameters", flush=True)
+    print(f"Warming up for 5 seconds, then measuring for {MEASURE_SECONDS} seconds…", flush=True)
+    warmup_end = monotonic() + 5
+    while monotonic() < warmup_end:
+        step()
+    started = monotonic()
+    steps = 0
+    while monotonic() - started < MEASURE_SECONDS:
+        loss = step()
+        steps += 1
+    elapsed = monotonic() - started
+    if not torch.isfinite(loss).item():
+        raise RuntimeError("The training loss is nonfinite.")
+    processed = steps * config.context
+    report.update(
+        status="pass", modelRevision=MODEL_REVISION, modelConfigHash=fingerprint,
+        device=torch.cuda.get_device_name(0), torchVersion=torch.__version__,
+        parameters=count, context=config.context, microbatch=1, precision="fp32",
+        measuredSeconds=elapsed, steps=steps, processedTokens=processed,
+        tokensPerSecond=processed / elapsed, finalLoss=loss.item(),
+    )
+    output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Independent GPU throughput: {report['tokensPerSecond']:,.1f} tokens/s | report: {output}")
+
+
 def kaggle_smoke():
-    revision = "11898d27ec28bb4dc834675921b19f29aa305f27"
     output = Path("/kaggle/working")
     if not output.is_dir():
         output = Path.cwd()
     report = output / "glm-kaggle-smoke.json"
-    result = {"status": "incomplete", "revision": revision, "events": []}
+    result = {"status": "incomplete", "revision": MODEL_REVISION, "events": []}
     started = monotonic()
     # Reserve a margin under five minutes after the cell gets a running kernel.
     deadline = started + 240
@@ -379,4 +479,9 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    kaggle_smoke()
+    if MODE == "benchmark":
+        kaggle_benchmark()
+    elif MODE == "smoke":
+        kaggle_smoke()
+    else:
+        raise ValueError('Set MODE to "smoke" or "benchmark".')
