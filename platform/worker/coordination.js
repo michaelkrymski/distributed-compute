@@ -1,7 +1,7 @@
 import { body, fail } from "./security.js";
 import { benchmarkSettings, benchmarkPhase, canStart, workloadCompatible, validResult } from "./benchmark-contract.ts";
 
-const empty = kind => kind === "benchmark" ? {session:null,agents:[],history:[]} : {room:null,members:[],history:[]};
+const empty = kind => kind === "benchmark" ? {session:null,settings:null,agents:[],history:[]} : {room:null,members:[],history:[]};
 const fresh = (agent, now) => agent.lastSeenAt > now - 20000;
 const peer = value => typeof value === "string" && value.length <= 300 && /^\/ip[46]\/[^\s]+\/tcp\/\d+\/p2p\/[A-Za-z0-9]+$/.test(value);
 const integer = (n,min,max) => Number.isSafeInteger(n) && n >= min && n <= max;
@@ -37,13 +37,32 @@ function settings(b, project, previous = {}) {
 function benchmarkMutation(state,b,actor,project,now) {
   const action = b.action, machineId = `${actor.userId}:${b.instanceId ?? ""}`;
   let session = state.session;
+  if (action === "configure") {
+    admin(actor);
+    if (b.sessionId && b.sessionId !== session?.id) fail("The benchmark changed. Refresh and save again.",409);
+    const phase = session ? benchmarkPhase(session,now) : null;
+    if (phase && !["lobby","finished","cancelled"].includes(phase)) {
+      fail("Wait for the current benchmark to finish before changing settings.",409);
+    }
+    const config = settings(b,project,state.settings ?? session?.config);
+    if (phase === "lobby") {
+      if (state.agents.length && ["workload","batchTokens","trainingProfile","microbatch","localSteps"].some(k=>config[k]!==session.config[k])) {
+        fail("Remove all registered workers, save the workload settings, then reconnect the workers. Timing can change while workers wait.",409);
+      }
+      session.config = config;
+    }
+    state.settings = config;
+    return;
+  }
   if (action === "create") {
     admin(actor);
     if (session && !["finished","cancelled"].includes(benchmarkPhase(session,now))) fail("A benchmark lobby already exists. Cancel it first.",409);
     if (!Array.isArray(b.peers) || b.peers.length < 1 || b.peers.length > 3 || !b.peers.every(peer)) fail("Start a local coordinator and provide its reachable Hivemind peer address.");
     if (session) state.history.unshift({session,agents:state.agents});
     state.history = state.history.slice(0,20);
-    state.session = {id:crypto.randomUUID(),createdAt:now,createdBy:actor.userId,peers:b.peers,expected:[],config:settings(b,project),coordinatorSeenAt:now,startsAt:null,cancelledAt:null};
+    const config = settings(b,project,state.settings ?? session?.config);
+    state.settings = config;
+    state.session = {id:crypto.randomUUID(),createdAt:now,createdBy:actor.userId,peers:b.peers,expected:[],config,coordinatorSeenAt:now,startsAt:null,cancelledAt:null};
     state.agents = [];return;
   }
   if (!session || b.sessionId && b.sessionId !== session.id) fail("No matching benchmark session.",409);
@@ -51,12 +70,6 @@ function benchmarkMutation(state,b,actor,project,now) {
   const agent = state.agents.find(a=>a.userId===machineId && a.instanceId===b.instanceId);
   const target = typeof b.agentId === "string" ? b.agentId : machineId;
   if (action === "coordinator_heartbeat") { admin(actor); if (actor.userId !== session.createdBy) fail("Only this coordinator can send its heartbeat.",403); session.coordinatorSeenAt=now;return; }
-  if (action === "configure") {
-    admin(actor);if (phase !== "lobby") fail("Settings are editable only in the lobby.",409);
-    const config = settings(b,project,session.config);
-    if (state.agents.length && ["workload","batchTokens","trainingProfile","microbatch","localSteps"].some(k=>config[k]!==session.config[k])) fail("Remove the agents before changing the workload.",409);
-    session.config=config;return;
-  }
   if (action === "register") {
     if (phase !== "lobby") fail("Agents can join only before Start.",409);
     const limit = session.config.trainingProfile === "compiled-bf16" ? 1 : 10;
@@ -65,6 +78,7 @@ function benchmarkMutation(state,b,actor,project,now) {
     if ((b.device.workload ?? "synthetic") !== session.config.workload || (b.device.batchTokens ?? 32768) !== session.config.batchTokens || ["trainingProfile","microbatch","localSteps"].some(k=>(b.device[k] ?? ({trainingProfile:"reference-fp32",microbatch:1,localSteps:1}[k]))!==session.config[k])) fail("Workload changed. Restart the agent.",409);
     if (session.config.workload === "baseline-training" && !/^[a-f0-9]{64}$/.test(b.device.workloadFingerprint ?? "")) fail("A model fingerprint is required.");
     if (session.config.trainingProfile === "compiled-bf16" && (!b.device.compiledModel || !b.device.kind.startsWith("cuda:"))) fail("Compiled BF16 requires a compiled NVIDIA worker.");
+    if (session.config.trainingProfile === "optimized-fp16" && !/^(cuda|rocm):\d+$/.test(b.device.kind)) fail("Optimized FP16 requires a CUDA or ROCm GPU.");
     state.agents.push({sessionId:session.id,userId:machineId,instanceId:b.instanceId,device:b.device,lastSeenAt:now,requestedReady:false,ready:false,result:null});return;
   }
   if (action === "request_ready" || action === "remove_agent") {
@@ -82,7 +96,8 @@ function benchmarkMutation(state,b,actor,project,now) {
     if (!["finished","cancelled"].includes(phase)) fail("Results are accepted only after measurement.",409);
     if (!validResult(r) || (r.workload ?? "synthetic")!==c.workload || r.measuredSeconds>c.measureSeconds) fail("Invalid benchmark report.");
     if (r.complete && (r.measuredRounds<1 || r.failedRounds>0 || r.measuredSeconds<c.measureSeconds-1 || r.clockUncertaintyMs>1000)) fail("An incomplete or degraded benchmark cannot be marked complete.");
-    if (c.workload === "baseline-training" && (r.parameterCount!==c.payloadElements || r.modelFingerprint!==agent.device.workloadFingerprint || !integer(r.processedTokens,0,Number.MAX_SAFE_INTEGER) || r.processedTokens % c.model.context || !integer(r.localBatchTokens,c.model.context,c.batchTokens) || r.localBatchTokens % c.model.context || r.processedTokens<r.measuredRounds*c.model.context || r.processedTokens>r.measuredRounds*c.batchTokens*c.localSteps || (r.trainingProfile ?? "reference-fp32")!==c.trainingProfile || (r.microbatch ?? 1)!==c.microbatch || (r.localSteps ?? 1)!==c.localSteps || (r.precision ?? "fp32")!==(c.trainingProfile.endsWith("bf16") ? "bf16" : "fp32"))) fail("Report does not match this project's workload.");
+    const expectedPrecision = c.trainingProfile.split("-").at(-1);
+    if (c.workload === "baseline-training" && (r.parameterCount!==c.payloadElements || r.modelFingerprint!==agent.device.workloadFingerprint || !integer(r.processedTokens,0,Number.MAX_SAFE_INTEGER) || r.processedTokens % c.model.context || !integer(r.localBatchTokens,c.model.context,c.batchTokens) || r.localBatchTokens % c.model.context || r.processedTokens<r.measuredRounds*c.model.context || r.processedTokens>r.measuredRounds*c.batchTokens*c.localSteps || (r.trainingProfile ?? "reference-fp32")!==c.trainingProfile || (r.microbatch ?? 1)!==c.microbatch || (r.localSteps ?? 1)!==c.localSteps || (r.precision ?? "fp32")!==expectedPrecision)) fail("Report does not match this project's workload.");
     agent.result=r;agent.lastSeenAt=now;return;
   }
   if (action === "start") {

@@ -15,13 +15,18 @@ def training_workload(config, device, seed, factory=None):
             raise RuntimeError("External workload does not match the project's parameter count, context or fingerprint contract")
         return workload
     try:
-        module = importlib.import_module("glmtrain.benchmark")
+        if config.get("trainingProfile") == "optimized-fp16":
+            module = importlib.import_module("glmtrain.fp16_benchmark")
+            workload_type = module.FP16TrainingWorkload
+        else:
+            module = importlib.import_module("glmtrain.benchmark")
+            workload_type = module.TrainingWorkload
     except ImportError as error:
         raise RuntimeError(
             "Model benchmark requires the training package. Install both packages: "
             "python -m pip install -e ./training -e ./hivemind-tools"
         ) from error
-    workload = module.TrainingWorkload(config, device, seed)
+    workload = workload_type(config, device, seed)
     if workload.parameter_count != config["payloadElements"]:
         raise RuntimeError("Model parameter count does not match the benchmark contract")
     return workload

@@ -7,7 +7,7 @@ export const BENCHMARK_CONFIG = {
   workload: "synthetic" as "synthetic" | "baseline-training",
   trainingTokens: 500_000_000,
   batchTokens: 32768,
-  trainingProfile: "reference-fp32" as "reference-fp32" | "optimized-fp32" | "optimized-bf16" | "compiled-bf16",
+  trainingProfile: "reference-fp32" as "reference-fp32" | "optimized-fp32" | "optimized-fp16" | "optimized-bf16" | "compiled-bf16",
   microbatch: 1,
   localSteps: 1,
   model: {
@@ -44,11 +44,12 @@ export function benchmarkSettings(
     measure < 10 ||
     measure > 3600 ||
     !["synthetic", "baseline-training"].includes(String(workload)) ||
-    !["reference-fp32", "optimized-fp32", "optimized-bf16", "compiled-bf16"].includes(String(trainingProfile)) ||
+    !["reference-fp32", "optimized-fp32", "optimized-fp16", "optimized-bf16", "compiled-bf16"].includes(String(trainingProfile)) ||
     ![1, 2, 4, 8, 16, 32, 64].includes(microbatch as number) ||
     ![1, 2, 4, 8, 16, 32].includes(localSteps as number) ||
     (trainingProfile === "reference-fp32" && microbatch !== 1) ||
     (trainingProfile === "reference-fp32" && localSteps !== 1) ||
+    (trainingProfile === "optimized-fp16" && localSteps !== 1) ||
     (workload === "synthetic" && trainingProfile !== "reference-fp32") ||
     (workload === "synthetic" && localSteps !== 1)
   )
