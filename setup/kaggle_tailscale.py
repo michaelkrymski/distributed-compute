@@ -24,6 +24,8 @@ SOCKS_PORT = 40191
 TAILNET_RANGE = IPv4Network("100.64.0.0/10")
 # Optional. Leave blank if you are still waiting for your teammate's IP.
 PEER_IP = ""
+# Set to 30 to diagnose a draft session that disconnects after setup.
+OBSERVE_SECONDS = 0
 
 
 def status(step, message):
@@ -170,7 +172,9 @@ def stop_kaggle_tailnet():
 
 
 if __name__ == "__main__":
-    status("00/start", "Kaggle Tailscale diagnostics v1. This cell never waits for IP input.")
+    status("00/start", "Kaggle Tailscale diagnostics v2. This cell never waits for IP input.")
+    if type(OBSERVE_SECONDS) is not int or not 0 <= OBSERVE_SECONDS <= 60:
+        raise ValueError("OBSERVE_SECONDS must be an integer from 0 to 60.")
     if "kaggle_tailnet" in globals():
         stop_kaggle_tailnet()
     kaggle_tailnet = KaggleTailnet()
@@ -183,4 +187,15 @@ if __name__ == "__main__":
     if PEER_IP.strip():
         status("10/probe", "Checking the configured peer.")
         test_kaggle_peer(PEER_IP)
+    if OBSERVE_SECONDS:
+        status("11/observe", f"Watching the daemon for {OBSERVE_SECONDS} seconds before the cell exits.")
+        deadline = monotonic() + OBSERVE_SECONDS
+        while monotonic() < deadline:
+            sleep(min(5, max(0, deadline - monotonic())))
+            exit_code = kaggle_tailnet.process.poll()
+            if exit_code is not None:
+                status("error", f"tailscaled exited with status {exit_code} while the Python cell was active.")
+                kaggle_tailnet.close()
+                raise RuntimeError("Tailscale daemon stopped during observation.")
+            status("11/observe", "Python cell and tailscaled are both still running.")
     status("done", "Setup cell finished. Tailscale stays active while this kernel is alive.")
