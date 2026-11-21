@@ -30,6 +30,9 @@ def run(payload, manifest, cli):
     room_id=room["id"]
     client.post(action="join",roomId=room_id,instanceId=instance,fingerprint=manifest["fingerprint"],name=payload["name"],device=torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU")
     print(json.dumps(dict(event="room_connected",instanceId=instance)),flush=True)
+    if payload.get("ready"):
+        client.post(action="ready",roomId=room_id,instanceId=instance,ready=True)
+        print("Ready. Leave this terminal open while the organizer starts training.",flush=True)
     mine=None
     while True:
         client.post(action="heartbeat",roomId=room_id,instanceId=instance)
@@ -44,6 +47,7 @@ def run(payload, manifest, cli):
                     raise RuntimeError("This computer was excluded from the started room")
             else: break
         time.sleep(2)
+    print(json.dumps(dict(event="room_started",shard=mine["shard"],leader=bool(mine["leader"]))),flush=True)
     if mine["leader"] and payload.get("resume"):
         raise RuntimeError("Fresh room leader cannot resume: create a fresh run or use the existing recovery CLI")
     stop=threading.Event();progress={}; original=sys.stdout
