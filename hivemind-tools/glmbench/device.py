@@ -23,11 +23,14 @@ def select_device(kind="auto", index=0):
     if gpu and index >= torch.cuda.device_count():
         raise ValueError("GPU index exceeds the number of visible devices")
     device = torch.device("cuda", index) if gpu else torch.device("cpu")
-    dtype = (
-        torch.bfloat16
-        if gpu and torch.cuda.is_bf16_supported(including_emulation=False)
-        else torch.float32
+    # PyTorch 2.8 reports BF16 support unconditionally on ROCm, but BF16
+    # matmul can crash on RDNA 1/2 (gfx10), e.g. the RX 6800 XT.
+    rdna1_or_2 = (
+        gpu and hip
+        and torch.cuda.get_device_properties(device).gcnArchName.startswith("gfx10")
     )
+    use_bf16 = gpu and not rdna1_or_2 and torch.cuda.is_bf16_supported(including_emulation=False)
+    dtype = torch.bfloat16 if use_bf16 else torch.float32
     return device, dtype
 
 
